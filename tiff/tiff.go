@@ -1,5 +1,5 @@
 
-// Package tiff decodes and provides convenient access to tiff-encoded data,
+// Package tiff implements TIFF decoding as defined in TIFF 6.0 specification.
 package tiff
 
 import (

@@ -1,4 +1,6 @@
 
+// Package exif implements decoding of EXIF data as defined in the EXIF 2.2
+// specification.
 package exif
 
 import (
@@ -29,43 +31,10 @@ type Exif struct {
   interOpFields map[string]uint16
 }
 
-// Get
-func (x *Exif) Get(name string) *tiff.Tag {
-  if tg, ok := x.main[x.fields[name]]; ok {
-    return tg
-  } else if tg, ok := x.gps[x.gpsFields[name]]; ok {
-    return tg
-  } else if tg, ok := x.interOp[x.interOpFields[name]]; ok {
-    return tg
-  }
-  return nil
-}
-
-func (x *Exif) String() string {
-  msg := "Main:\n"
-  for name, id := range x.fields {
-    if tag, ok := x.main[id]; ok {
-      msg += name + ":" + tag.String() + "\n"
-    }
-  }
-  msg += "\n\nGPS:\n"
-  for name, id := range x.gpsFields {
-    if tag, ok := x.gps[id]; ok {
-      msg += name + ":" + tag.String() + "\n"
-    }
-  }
-  msg += "\n\nInteroperability:\n"
-  for name, id := range x.interOpFields {
-    if tag, ok := x.interOp[id]; ok {
-      msg += name + ":" + tag.String() + "\n"
-    }
-  }
-  return msg
-}
-
+// Decode parses exif encoded data from r and returns a queryable Exif object.
 func Decode(r io.Reader) (*Exif, error) {
   sec := newAppSec(0xE1, r)
-  er, err := sec.ExifReader()
+  er, err := sec.exifReader()
   if err != nil {
     return nil, err
   }
@@ -272,13 +241,51 @@ func (x *Exif) loadStdFields() {
 
 }
 
-type AppSec struct {
+// Get retrieves the exif tag for the given field name. It returns nil if the
+// tag name is not found.
+func (x *Exif) Get(name string) *tiff.Tag {
+  if tg, ok := x.main[x.fields[name]]; ok {
+    return tg
+  } else if tg, ok := x.gps[x.gpsFields[name]]; ok {
+    return tg
+  } else if tg, ok := x.interOp[x.interOpFields[name]]; ok {
+    return tg
+  }
+  return nil
+}
+
+// String returns a pretty text representation of the decoded exif data.
+func (x *Exif) String() string {
+  msg := "Main:\n"
+  for name, id := range x.fields {
+    if tag, ok := x.main[id]; ok {
+      msg += name + ":" + tag.String() + "\n"
+    }
+  }
+  msg += "\n\nGPS:\n"
+  for name, id := range x.gpsFields {
+    if tag, ok := x.gps[id]; ok {
+      msg += name + ":" + tag.String() + "\n"
+    }
+  }
+  msg += "\n\nInteroperability:\n"
+  for name, id := range x.interOpFields {
+    if tag, ok := x.interOp[id]; ok {
+      msg += name + ":" + tag.String() + "\n"
+    }
+  }
+  return msg
+}
+
+type appSec struct {
   marker byte
   data []byte
 }
 
-func newAppSec(marker byte, r io.Reader) *AppSec {
-  app := &AppSec{marker: marker}
+// newAppSec finds marker in r and returns the corresponding application data
+// section.
+func newAppSec(marker byte, r io.Reader) *appSec {
+  app := &appSec{marker: marker}
 
   buf := bufio.NewReader(r)
 
@@ -318,11 +325,14 @@ func newAppSec(marker byte, r io.Reader) *AppSec {
   return app
 }
 
-func (app *AppSec) Reader() *bytes.Reader {
+// reader returns a reader on this appSec.
+func (app *appSec) reader() *bytes.Reader {
   return bytes.NewReader(app.data)
 }
 
-func (app *AppSec) ExifReader() (*bytes.Reader, error) {
+// exifReader returns a reader on this appSec with the read cursor advanced to
+// the start of the exif's tiff encoded portion.
+func (app *appSec) exifReader() (*bytes.Reader, error) {
   // read/check for exif special mark
   if len(app.data) < 6 {
     return nil, errors.New("exif: failed to find exif intro marker")
