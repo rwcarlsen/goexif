@@ -21,22 +21,35 @@ go get github.com/rwcarlsen/goexif/tiff
 Example usage:
 
 ```go
-fname := "sample1.jpg"
+package main
 
-f, err := os.Open(fname)
-if err != nil {
-  log.Fatal(err)
-}
+import (
+  "github.com/rwcarlsen/goexif/exif"
+  "os"
+  "log"
+  "fmt"
+)
 
-x, err := exif.Decode(f)
+func main() {
+  fname := "sample1.jpg"
+  
+  f, err := os.Open(fname)
   if err != nil {
-  log.Fatal(err)
+    log.Fatal(err)
+  }
+  
+  x, err := exif.Decode(f)
+    if err != nil {
+    log.Fatal(err)
+  }
+  
+  camMake := x.Get("Make").StringVal()
+  camModel := x.Get("Model").StringVal()
+  date := x.Get("DateTimeOriginal").StringVal()
+  numer, denom := x.Get("FocalLength").Rat2(0) // retrieve first (only) rat. value
+  
+  fmt.Println(camMake, camModel, date, numer, denom)
 }
-
-camMake := x.Get("Make").StringVal()
-camModel := x.Get("Model").StringVal()
-date := x.Get("DateTimeOriginal").StringVal()
-numer, denom := x.Get("FocalLength").Rat2(0) // retrieve first (only) rat. value
-
-fmt.Println(camMake, camModel, date, numer, denom)
 ```
+
+<!--golang-->
