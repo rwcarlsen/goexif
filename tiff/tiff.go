@@ -172,6 +172,8 @@ type Tag struct {
 	Ncomp uint32
 	// Val holds the bytes that represent the tag's value.
 	Val []byte
+
+  order binary.ByteOrder
 }
 
 // DecodeTag parses a tiff-encoded IFD tag from r and returns Tag object. The
@@ -180,6 +182,7 @@ type Tag struct {
 // beginning of the tag).
 func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 	t := new(Tag)
+  t.order = order
 
 	err := binary.Read(r, order, &t.Id)
 	if err != nil {
@@ -228,18 +231,34 @@ func (t *Tag) Rat(i int) *big.Rat {
 // Rat2 returns the tag's i'th value as a rational number represented by a
 // numerator-denominator pair. It panics if the tag format is not rational
 // or if the tag value has no i'th component.
-func (t *Tag) Rat2(i int) (int64, int64) {
+func (t *Tag) Rat2(i int) (num, den int64) {
 	start := i * int(fmtSize[t.Fmt])
-	middle := start + 4
-	end := middle + 4
+	end := start + 8
+
+  r := bytes.NewReader(t.Val[start:end])
+
 	if t.Fmt == 10 {
-		num, _ := binary.Varint(t.Val[start:middle])
-		den, _ := binary.Varint(t.Val[middle:end])
-		return num, den
+    var n, d int32
+    err := binary.Read(r, t.order, &n)
+    if err != nil {
+      panic(err.Error())
+    }
+    err = binary.Read(r, t.order, &d)
+    if err != nil {
+      panic(err.Error())
+    }
+    return int64(n), int64(d)
 	} else if t.Fmt == 5 {
-		num, _ := binary.Uvarint(t.Val[start:middle])
-		den, _ := binary.Uvarint(t.Val[middle:end])
-		return int64(num), int64(den)
+    var n, d uint32
+    err := binary.Read(r, t.order, &n)
+    if err != nil {
+      panic(err.Error())
+    }
+    err = binary.Read(r, t.order, &d)
+    if err != nil {
+      panic(err.Error())
+    }
+    return int64(n), int64(d)
 	} else {
 		panic("Tag format is not 'rational'")
 	}
