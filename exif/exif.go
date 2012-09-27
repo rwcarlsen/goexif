@@ -10,7 +10,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dustin/goexif/tiff"
+	"github.com/rwcarlsen/goexif/tiff"
 )
 
 const (
