@@ -39,7 +39,7 @@ func main() {
   }
   
   x, err := exif.Decode(f)
-    if err != nil {
+  if err != nil {
     log.Fatal(err)
   }
   
