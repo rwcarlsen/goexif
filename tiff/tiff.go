@@ -10,6 +10,9 @@ import (
 	"io/ioutil"
 	"math"
 	"math/big"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 var fmtSize = map[uint16]uint32{
@@ -173,7 +176,7 @@ type Tag struct {
 	// Val holds the bytes that represent the tag's value.
 	Val []byte
 
-  order binary.ByteOrder
+	order binary.ByteOrder
 }
 
 // DecodeTag parses a tiff-encoded IFD tag from r and returns Tag object. The
@@ -182,7 +185,7 @@ type Tag struct {
 // beginning of the tag).
 func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 	t := new(Tag)
-  t.order = order
+	t.order = order
 
 	err := binary.Read(r, order, &t.Id)
 	if err != nil {
@@ -235,30 +238,30 @@ func (t *Tag) Rat2(i int) (num, den int64) {
 	start := i * int(fmtSize[t.Fmt])
 	end := start + 8
 
-  r := bytes.NewReader(t.Val[start:end])
+	r := bytes.NewReader(t.Val[start:end])
 
 	if t.Fmt == 10 {
-    var n, d int32
-    err := binary.Read(r, t.order, &n)
-    if err != nil {
-      panic(err.Error())
-    }
-    err = binary.Read(r, t.order, &d)
-    if err != nil {
-      panic(err.Error())
-    }
-    return int64(n), int64(d)
+		var n, d int32
+		err := binary.Read(r, t.order, &n)
+		if err != nil {
+			panic(err.Error())
+		}
+		err = binary.Read(r, t.order, &d)
+		if err != nil {
+			panic(err.Error())
+		}
+		return int64(n), int64(d)
 	} else if t.Fmt == 5 {
-    var n, d uint32
-    err := binary.Read(r, t.order, &n)
-    if err != nil {
-      panic(err.Error())
-    }
-    err = binary.Read(r, t.order, &d)
-    if err != nil {
-      panic(err.Error())
-    }
-    return int64(n), int64(d)
+		var n, d uint32
+		err := binary.Read(r, t.order, &n)
+		if err != nil {
+			panic(err.Error())
+		}
+		err = binary.Read(r, t.order, &d)
+		if err != nil {
+			panic(err.Error())
+		}
+		return int64(n), int64(d)
 	} else {
 		panic("Tag format is not 'rational'")
 	}
@@ -335,4 +338,42 @@ func (t *Tag) String() string {
 		}
 	}
 	return msg + "]}"
+}
+
+func nullString(in []byte) []byte {
+	rv := bytes.Buffer{}
+	rv.WriteByte('"')
+	for _, b := range in {
+		if unicode.IsPrint(rune(b)) {
+			rv.WriteByte(b)
+		}
+	}
+	rv.WriteByte('"')
+	rvb := rv.Bytes()
+	if utf8.Valid(rvb) {
+		return rvb
+	}
+	return []byte(`""`)
+}
+
+func (t *Tag) MarshalJSON() ([]byte, error) {
+	switch t.Fmt {
+	case 2, 7:
+		return nullString(t.Val), nil
+	case 1, 3, 4, 5, 6, 8, 9, 10, 11, 12:
+		rv := []string{}
+		for i := 0; i < int(t.Ncomp); i++ {
+			switch t.Fmt {
+			case 5, 10:
+				n, d := t.Rat2(i)
+				rv = append(rv, fmt.Sprintf(`"%v/%v"`, n, d))
+			case 11, 12:
+				rv = append(rv, fmt.Sprintf("%v", t.Float(i)))
+			default:
+				rv = append(rv, fmt.Sprintf("%v", t.Int(i)))
+			}
+		}
+		return []byte(fmt.Sprintf(`[%s]`, strings.Join(rv, ","))), nil
+	}
+	panic("Unhandled type")
 }
