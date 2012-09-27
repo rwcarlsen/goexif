@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 var fmtSize = map[uint16]uint32{
@@ -348,7 +349,11 @@ func nullString(in []byte) []byte {
 		}
 	}
 	rv.WriteByte('"')
-	return rv.Bytes()
+	rvb := rv.Bytes()
+	if utf8.Valid(rvb) {
+		return rvb
+	}
+	return []byte(`""`)
 }
 
 func (t *Tag) MarshalJSON() ([]byte, error) {
