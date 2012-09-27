@@ -6,9 +6,11 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
-	"github.com/rwcarlsen/goexif/tiff"
 	"io"
+
+	"github.com/dustin/goexif/tiff"
 )
 
 const (
@@ -28,6 +30,29 @@ type Exif struct {
 
 	interOp       map[uint16]*tiff.Tag
 	interOpFields map[string]uint16
+}
+
+func (x Exif) MarshalJSON() ([]byte, error) {
+	m := map[string]interface{}{}
+
+	for name, id := range x.fields {
+		if tag, ok := x.main[id]; ok {
+			m[name] = tag
+		}
+	}
+
+	for name, id := range x.gpsFields {
+		if tag, ok := x.gps[id]; ok {
+			m[name] = tag
+		}
+	}
+	for name, id := range x.interOpFields {
+		if tag, ok := x.interOp[id]; ok {
+			m[name] = tag
+		}
+	}
+
+	return json.Marshal(m)
 }
 
 // Decode parses exif encoded data from r and returns a queryable Exif object.
