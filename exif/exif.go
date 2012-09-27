@@ -57,7 +57,10 @@ func (x Exif) MarshalJSON() ([]byte, error) {
 
 // Decode parses exif encoded data from r and returns a queryable Exif object.
 func Decode(r io.Reader) (*Exif, error) {
-	sec := newAppSec(0xE1, r)
+	sec, err := newAppSec(0xE1, r)
+	if err != nil {
+		return nil, err
+	}
 	er, err := sec.exifReader()
 	if err != nil {
 		return nil, err
@@ -308,7 +311,7 @@ type appSec struct {
 
 // newAppSec finds marker in r and returns the corresponding application data
 // section.
-func newAppSec(marker byte, r io.Reader) *appSec {
+func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 	app := &appSec{marker: marker}
 
 	buf := bufio.NewReader(r)
@@ -317,7 +320,7 @@ func newAppSec(marker byte, r io.Reader) *appSec {
 	for {
 		b, err := buf.ReadByte()
 		if err != nil {
-			panic("could not find marker: " + err.Error())
+			return nil, err
 		}
 		n, err := buf.Peek(1)
 		if b == 0xFF && n[0] == marker {
@@ -330,7 +333,7 @@ func newAppSec(marker byte, r io.Reader) *appSec {
 	var dataLen uint16
 	err := binary.Read(buf, binary.BigEndian, &dataLen)
 	if err != nil {
-		panic("section size load failed")
+		return nil, err
 	}
 	dataLen -= 2 // subtract length of the 2 byte size marker itself
 
@@ -340,13 +343,13 @@ func newAppSec(marker byte, r io.Reader) *appSec {
 		s := make([]byte, int(dataLen)-nread)
 		n, err := buf.Read(s)
 		if err != nil {
-			panic("failed to read section data: " + err.Error())
+			return nil, err
 		}
 		nread += n
 		app.data = append(app.data, s...)
 	}
 
-	return app
+	return app, nil
 }
 
 // reader returns a reader on this appSec.
