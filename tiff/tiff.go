@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"math/big"
 	"strings"
 	"unicode"
@@ -202,23 +201,29 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 		return nil, errors.New("tiff: tag component count read failed: " + err.Error())
 	}
 
-	var offset uint32
-	err = binary.Read(r, order, &offset)
-	if err != nil {
-		return nil, errors.New("tiff: tag offset read failed: " + err.Error())
-	}
-
 	valLen := fmtSize[t.Fmt] * t.Ncomp
-	if valLen > 4 {
+	var offset uint32
+  if valLen > 4 {
+    binary.Read(r, order, &offset)
 		t.Val = make([]byte, valLen)
 		n, err := r.ReadAt(t.Val, int64(offset))
 		if n != int(valLen) || err != nil {
 			return nil, errors.New("tiff: tag value read failed: " + err.Error())
 		}
-	} else {
-		t.Val = make([]byte, 8)
-		binary.PutUvarint(t.Val, uint64(offset))
-	}
+  } else {
+    val := make([]byte, valLen)
+    n, err := r.Read(val)
+    if err != nil || n != int(valLen) {
+      return nil, errors.New("tiff: tag offset read failed: " + err.Error())
+    }
+
+    n, err = r.Read(make([]byte, 4 - valLen))
+    if err != nil || n != 4 - int(valLen) {
+      return nil, errors.New("tiff: tag offset read failed: " + err.Error())
+    }
+
+		t.Val = val
+  }
 
 	return t, nil
 }
@@ -271,39 +276,76 @@ func (t *Tag) Rat2(i int) (num, den int64) {
 // Int returns the tag's i'th value as an integer. It panics if the tag format is not
 // an integer or if the tag value has no i'th component.
 func (t *Tag) Int(i int) int64 {
+  buf := bytes.NewReader(t.Val)
 	start := i * int(fmtSize[t.Fmt])
+
+  _, err := buf.Seek(int64(start), 0)
+  if err != nil {
+    panic("invalid value index")
+  }
+
 	var u int64
 	switch t.Fmt {
 	case 1:
-		v, _ := binary.Uvarint(t.Val[start : start+1])
-		u = int64(v)
+    var v uint8
+    err = binary.Read(buf, t.order, &v)
+    u = int64(v)
 	case 3:
-		v, _ := binary.Uvarint(t.Val[start : start+2])
-		u = int64(v)
+    var v uint16
+    err = binary.Read(buf, t.order, &v)
+    u = int64(v)
 	case 4:
-		v, _ := binary.Uvarint(t.Val[start : start+4])
-		u = int64(v)
+    var v uint32
+    err = binary.Read(buf, t.order, &v)
+    u = int64(v)
 	case 6:
-		u, _ = binary.Varint(t.Val[start : start+1])
+    var v int8
+    err = binary.Read(buf, t.order, &v)
+    u = int64(v)
 	case 8:
-		u, _ = binary.Varint(t.Val[start : start+2])
+    var v int16
+    err = binary.Read(buf, t.order, &v)
+    u = int64(v)
 	case 9:
-		u, _ = binary.Varint(t.Val[start : start+4])
+    var v int32
+    err = binary.Read(buf, t.order, &v)
+    u = int64(v)
 	default:
 		panic("Tag format is not 'int'")
 	}
+  if err != nil {
+    panic("unexpected error: " + err.Error())
+  }
 	return u
 }
 
 // Float returns the tag's i'th value as a float. It panics if the tag format is not
 // a float or if the tag value has no i'th component.
 func (t *Tag) Float(i int) float64 {
+  buf := bytes.NewReader(t.Val)
 	start := i * int(fmtSize[t.Fmt])
-	if t.Fmt != 11 && t.Fmt != 12 {
+
+  _, err := buf.Seek(int64(start), 0)
+  if err != nil {
+    panic("invalid value index")
+  }
+
+  var u float64
+	if t.Fmt == 11 {
+    var v float32
+    err = binary.Read(buf, t.order, &v)
+    u = float64(v)
+  } else if t.Fmt == 12 {
+    err = binary.Read(buf, t.order, &u)
+  } else {
 		panic("Tag format is not 'float'")
 	}
-	uintVal, _ := binary.Uvarint(t.Val[start : start+4])
-	return math.Float64frombits(uintVal)
+
+  if err != nil {
+    panic("unexpected error: " + err.Error())
+  }
+
+	return u
 }
 
 // StringVal returns the tag's value as a string. It panics if the tag format is not
