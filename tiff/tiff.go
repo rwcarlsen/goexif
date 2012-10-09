@@ -202,23 +202,29 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 		return nil, errors.New("tiff: tag component count read failed: " + err.Error())
 	}
 
-	var offset uint32
-	err = binary.Read(r, order, &offset)
-	if err != nil {
-		return nil, errors.New("tiff: tag offset read failed: " + err.Error())
-	}
-
 	valLen := fmtSize[t.Fmt] * t.Ncomp
-	if valLen > 4 {
+	var offset uint32
+  if valLen > 4 {
+    binary.Read(r, order, &offset)
 		t.Val = make([]byte, valLen)
 		n, err := r.ReadAt(t.Val, int64(offset))
 		if n != int(valLen) || err != nil {
 			return nil, errors.New("tiff: tag value read failed: " + err.Error())
 		}
-	} else {
-		t.Val = make([]byte, 8)
-		binary.PutUvarint(t.Val, uint64(offset))
-	}
+  } else {
+    val := make([]byte, valLen)
+    n, err := r.Read(val)
+    if err != nil || n != 4 {
+      return nil, errors.New("tiff: tag offset read failed: " + err.Error())
+    }
+
+    err, n = r.Read(make([]byte, 4 - valLen))
+    if err != nil || n != 4 - valLen {
+      return nil, errors.New("tiff: tag offset read failed: " + err.Error())
+    }
+
+		t.Val = val
+  }
 
 	return t, nil
 }
@@ -271,7 +277,16 @@ func (t *Tag) Rat2(i int) (num, den int64) {
 // Int returns the tag's i'th value as an integer. It panics if the tag format is not
 // an integer or if the tag value has no i'th component.
 func (t *Tag) Int(i int) int64 {
+  buf := bytes.NewReader(t.Val)
 	start := i * int(fmtSize[t.Fmt])
+
+  _, err := buf.Seek(start, 0)
+  if err != nil {
+    panic("tiff: invalid index")
+  }
+
+  binary.Read(buf, 
+
 	var u int64
 	switch t.Fmt {
 	case 1:

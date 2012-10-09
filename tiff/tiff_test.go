@@ -8,14 +8,18 @@ import (
 	"testing"
 )
 
-//   {"TgId", "TYPE", "N-VALUES", "VALUE---"},
-type input [4]string
+type input struct {
+  tgId string
+  tpe string
+  nVals string
+  offset string
+  val string
+}
 
 type output struct {
   id uint16
   format uint16
   count uint32
-  offset uint32
   val []byte
 }
 
@@ -28,51 +32,71 @@ type tagTest struct {
 //// Big endian Tests /////////////////////////
 ///////////////////////////////////////////////
 
-var set1 = []tagTest{
+var bigEndSet = []tagTest{
   tagTest{
-    //   {"TgId", "TYPE", "N-VALUES", "VALUE---"},
-    input{"0001", "0001", "00000001", "11000000"},
-    output{0x0001, 0x0001, 0x0001, 0x11},
-  }
+    //   {"TgId", "TYPE", "N-VALUES", "OFFSET--", "VAL..."},
+    input{"0001", "0001", "00000001", "11000000", ""},
+    output{0x0001, 0x0001, 0x0001, []byte{0x11}},
+  },
   tagTest{
-    //   {"TgId", "TYPE", "N-VALUES", "VALUE---"},
-    input{"0001", "0001", "00000002", "11120000"},
-    output{0x0001, 0x0001, 0x0001, 0000},
-  }
-
-  input{"0002", "0002", "00000002", "61000000"},
-  input{"0002", "0002", "00000003", "61000000"},
-  input{"0002", "0002", "00000004", "61000000"},
-  input{"0002", "0002", "00000005", "61000000"},
-
-  input{"0003", "0003", "00000001", "00000000"},
-  input{"0004", "0004", "00000001", "00000000"},
-  input{"0005", "0005", "00000001", "00000000"},
-  input{"0006", "0006", "00000001", "00000000"},
-  input{"0007", "0007", "00000001", "00000000"},
-  input{"0008", "0008", "00000001", "00000000"},
-  input{"0009", "0009", "00000001", "00000000"},
-  input{"000A", "000A", "00000001", "00000000"},
-  input{"000B", "000B", "00000001", "00000000"},
-  input{"000C", "000C", "00000001", "00000000"},
+    //   {"TgId", "TYPE", "N-VALUES", "OFFSET--", "VAL..."},
+    input{"0001", "0001", "00000002", "11120000", ""},
+    output{0x0001, 0x0001, 0x0002, []byte{0x11, 0x12}},
+  },
+  tagTest{
+    //   {"TgId", "TYPE", "N-VALUES", "OFFSET--", "VAL..."},
+    input{"0001", "0001", "00000005", "00000010", "1112131415"},
+    output{0x0001, 0x0001, 0x0005, []byte{0x11, 0x12, 0x13, 0x14, 0x15}},
+  },
 }
 
-var littleEndianEnts = []entry{
-  //   {"TgId", "TYPE", "N-VALUES", "VALUE---"},
-  entry{"0101", "0100", "00001111", "00001111"},
-  entry{"0201", "0200", "00001111", "00001111"},
-  entry{"0301", "0300", "00001111", "00001111"},
-  entry{"0401", "0400", "00001111", "00001111"},
-  entry{"0501", "0500", "00001111", "00001111"},
-  entry{"0601", "0600", "00001111", "00001111"},
-  entry{"0701", "0700", "00001111", "00001111"},
-  entry{"0801", "0800", "00001111", "00001111"},
-  entry{"0901", "0900", "00001111", "00001111"},
-  entry{"0A01", "0A00", "00001111", "00001111"},
-  entry{"0B01", "0B00", "00001111", "00001111"},
-  entry{"0C01", "0C00", "00001111", "00001111"},
+func TestDecodeTag_bigendian(t *testing.T) {
+  for i, tst := range bigEndSet {
+    data := buildInput(tst.in, binary.BigEndian)
+    buf := bytes.NewReader(data)
+
+    tg, err := DecodeTag(buf, binary.BigEndian)
+    if err != nil {
+      t.Errorf("tag %v%+v decode failed: %v", i, tst.in, err)
+      continue
+    }
+
+    if tg.Id != tst.out.id {
+      t.Errorf("tag %v id decode: expected %v, got %v", i, tst.out.id, tg.Id)
+    } else if tg.Fmt != tst.out.format {
+      t.Errorf("tag %v format decode: expected %v, got %v", i, tst.out.format, tg.Fmt)
+    } else if tg.Ncomp != tst.out.count {
+      t.Errorf("tag %v N-components decode: expected %v, got %v", i, tst.out.count, tg.Ncomp)
+    } else if ! bytes.Equal(tg.Val, tst.out.val) {
+      t.Errorf("tag %v value decode: expected %v, got %v", i, tst.out.val, tg.Val)
+    }
+  }
 }
 
+// buildInputBig creates a byte-slice based on big-endian ordered input
+func buildInput(in input, order binary.ByteOrder) []byte {
+  data := make([]byte, 0)
+  d, _ := hex.DecodeString(in.tgId)
+  data = append(data, d...)
+  d, _ = hex.DecodeString(in.tpe)
+  data = append(data, d...)
+  d, _ = hex.DecodeString(in.nVals)
+  data = append(data, d...)
+  d, _ = hex.DecodeString(in.offset)
+  data = append(data, d...)
+
+  if in.val != "" {
+    off := order.Uint32(d)
+    for i := 0; i < int(off) - 12; i++ {
+      data = append(data, 0xFF)
+    }
+
+    d, _ = hex.DecodeString(in.val)
+    data = append(data, d...)
+  }
+
+  return data
+}
 
 func data() []byte {
 	s1 := "49492A000800000002001A0105000100"
@@ -101,7 +125,7 @@ func TestDecode(t *testing.T) {
 	t.Log(tif)
 }
 
-func TestDecodeTag(t *testing.T) {
+func TestDecodeTag_blob(t *testing.T) {
 	buf := bytes.NewReader(data())
 	buf.Seek(10, 1)
 	tg, err := DecodeTag(buf, binary.LittleEndian)
