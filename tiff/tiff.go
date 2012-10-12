@@ -236,114 +236,96 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 }
 
 func (t *Tag) convertVals() {
-	switch t.Fmt {
-	case 2:
-		t.strVal = string(t.Val)
-	case 1, 3, 4, 6, 8, 9:
-    t.convertInts()
-	case 5, 10:
-    t.ratVals = make([][]int64, int(t.Ncomp))
-		for i := 0; i < int(t.Ncomp); i++ {
-			n, d := t.Rat2(i)
-			t.ratVals[i] = []int64{n, d}
-		}
-	case 11, 12:
-    t.floatVals = make([]float64, int(t.Ncomp))
-		for i := 0; i < int(t.Ncomp); i++ {
-			t.floatVals[i] = t.Float(i)
-		}
-	}
-}
-
-func (t *Tag) convertInts() int64 {
-  t.intVals = make([]int64, int(t.Ncomp))
-  buf := bytes.NewReader(t.Val)
-  for i := 0; i < int(t.Ncomp); i++ {
-    var u int64
-    switch t.Fmt {
-    case 1:
-      var v uint8
-      err = binary.Read(buf, t.order, &v)
-      u = int64(v)
-    case 3:
-      var v uint16
-      err = binary.Read(buf, t.order, &v)
-      u = int64(v)
-    case 4:
-      var v uint32
-      err = binary.Read(buf, t.order, &v)
-      u = int64(v)
-    case 6:
-      var v int8
-      err = binary.Read(buf, t.order, &v)
-      u = int64(v)
-    case 8:
-      var v int16
-      err = binary.Read(buf, t.order, &v)
-      u = int64(v)
-    case 9:
-      var v int32
-      err = binary.Read(buf, t.order, &v)
-      u = int64(v)
-    }
-    if err != nil {
-      panic("unexpected error: " + err.Error())
-    }
-    t.intVals[i] = u
-  }
-}
-
-func (t *Tag) convertRats() (num, den int64) {
-  t.ratVals = make([][]int64, int(t.Ncomp))
   r := bytes.NewReader(t.Val)
 
-  if t.Fmt == 10 {
+	switch t.Fmt {
+	case 2: // ascii string
+		t.strVal = string(t.Val)
+  case 1:
+    var v uint8
+    t.intVals = make([]int64, int(t.Ncomp))
     for i := 0; i < int(t.Ncomp); i++ {
-      var n, d int32
-      err := binary.Read(r, t.order, &n)
-      if err != nil {
-        panic("unexpected error: " + err.Error())
-      }
-      err = binary.Read(r, t.order, &d)
-      if err != nil {
-        panic("unexpeced error: " + err.Error())
-      }
-      t.ratVals[i] = []int64{n, d}
+      err := binary.Read(r, t.order, &v)
+      panicOn(err)
+      t.intVals[i] = int64(v)
     }
-  } else if t.Fmt == 5 {
+  case 3:
+    var v uint16
+    t.intVals = make([]int64, int(t.Ncomp))
+    for i := 0; i < int(t.Ncomp); i++ {
+      err := binary.Read(r, t.order, &v)
+      panicOn(err)
+      t.intVals[i] = int64(v)
+    }
+  case 4:
+    var v uint32
+    t.intVals = make([]int64, int(t.Ncomp))
+    for i := 0; i < int(t.Ncomp); i++ {
+      err := binary.Read(r, t.order, &v)
+      panicOn(err)
+      t.intVals[i] = int64(v)
+    }
+  case 6:
+    var v int8
+    t.intVals = make([]int64, int(t.Ncomp))
+    for i := 0; i < int(t.Ncomp); i++ {
+      err := binary.Read(r, t.order, &v)
+      panicOn(err)
+      t.intVals[i] = int64(v)
+    }
+  case 8:
+    var v int16
+    t.intVals = make([]int64, int(t.Ncomp))
+    for i := 0; i < int(t.Ncomp); i++ {
+      err := binary.Read(r, t.order, &v)
+      panicOn(err)
+      t.intVals[i] = int64(v)
+    }
+  case 9:
+    var v int32
+    t.intVals = make([]int64, int(t.Ncomp))
+    for i := 0; i < int(t.Ncomp); i++ {
+      err := binary.Read(r, t.order, &v)
+      panicOn(err)
+      t.intVals[i] = int64(v)
+    }
+	case 5: // unsigned rational
+    t.ratVals = make([][]int64, int(t.Ncomp))
     for i := 0; i < int(t.Ncomp); i++ {
       var n, d uint32
       err := binary.Read(r, t.order, &n)
-      if err != nil {
-        panic(err.Error())
-      }
+      panicOn(err)
       err = binary.Read(r, t.order, &d)
-      if err != nil {
-        panic(err.Error())
-      }
-      t.ratVals[i] = []int64{n, d}
-  }
-}
-
-func (t *Tag) Float(i int) float64 {
-  buf := bytes.NewReader(t.Val)
-
-  var u float64
-	if t.Fmt == 11 {
-    var v float32
-    err = binary.Read(buf, t.order, &v)
-    u = float64(v)
-  } else if t.Fmt == 12 {
-    err = binary.Read(buf, t.order, &u)
-  } else {
-		panic("Tag format is not 'float'")
+      panicOn(err)
+      t.ratVals[i] = []int64{int64(n), int64(d)}
+    }
+	case 10: // signed rational
+    t.ratVals = make([][]int64, int(t.Ncomp))
+    for i := 0; i < int(t.Ncomp); i++ {
+      var n, d int32
+      err := binary.Read(r, t.order, &n)
+      panicOn(err)
+      err = binary.Read(r, t.order, &d)
+      panicOn(err)
+      t.ratVals[i] = []int64{int64(n), int64(d)}
+    }
+	case 11: // float32
+    for i := 0; i < int(t.Ncomp); i++ {
+      t.floatVals = make([]float64, int(t.Ncomp))
+      var v float32
+      err := binary.Read(r, t.order, &v)
+      panicOn(err)
+      t.floatVals[i] = float64(v)
+    }
+	case 12: // float64 (double)
+    for i := 0; i < int(t.Ncomp); i++ {
+      t.floatVals = make([]float64, int(t.Ncomp))
+      var u float64
+      err := binary.Read(r, t.order, &u)
+      panicOn(err)
+      t.floatVals[i] = u
+    }
 	}
-
-  if err != nil {
-    panic("unexpected error: " + err.Error())
-  }
-
-	return u
 }
 
 // Rat returns the tag's i'th value as a rational number. It panics if the tag format
@@ -369,39 +351,18 @@ func (t *Tag) Rat2(i int) (num, den int64) {
 func (t *Tag) Int(i int) int64 {
   switch t.Fmt {
   case 1, 3, 4, 6, 8, 9:
-  default:
-		panic("Tag format is not 'int'")
+    return t.intVals[i]
   }
-  return t.intVals[i]
+  panic("Tag format is not 'int'")
 }
 
 // Float returns the tag's i'th value as a float. It panics if the tag format is not
 // a float or if the tag value has no i'th component.
 func (t *Tag) Float(i int) float64 {
-  buf := bytes.NewReader(t.Val)
-	start := i * int(fmtSize[t.Fmt])
-
-  _, err := buf.Seek(int64(start), 0)
-  if err != nil {
-    panic("invalid value index")
-  }
-
-  var u float64
-	if t.Fmt == 11 {
-    var v float32
-    err = binary.Read(buf, t.order, &v)
-    u = float64(v)
-  } else if t.Fmt == 12 {
-    err = binary.Read(buf, t.order, &u)
-  } else {
+  if t.Fmt != 11 && t.Fmt != 12 {
 		panic("Tag format is not 'float'")
-	}
-
-  if err != nil {
-    panic("unexpected error: " + err.Error())
   }
-
-	return u
+  return t.floatVals[i]
 }
 
 // StringVal returns the tag's value as a string. It panics if the tag
@@ -415,43 +376,10 @@ func (t *Tag) StringVal() string {
 
 // String returns a nicely formatted version of the tag.
 func (t *Tag) String() string {
-  msg := fmt.Sprintf("{Id:%X, Val:[", t.Id)
-	switch t.Fmt {
-	case 2:
-		msg += string(t.Val)
-	case 1, 3, 4, 6, 8, 9:
-		for i := 0; i < int(t.Ncomp); i++ {
-			msg += fmt.Sprint(t.Int(i), ", ")
-		}
-	case 5, 10:
-		for i := 0; i < int(t.Ncomp); i++ {
-			n, d := t.Rat2(i)
-			msg += fmt.Sprintf("%v/%v, ", n, d)
-		}
-	case 7:
-		msg += string(t.Val)
-	case 11, 12:
-		for i := 0; i < int(t.Ncomp); i++ {
-			msg += fmt.Sprint(t.Float(i), ", ")
-		}
-	}
-	return msg + "]}"
-}
-
-func nullString(in []byte) []byte {
-	rv := bytes.Buffer{}
-	rv.WriteByte('"')
-	for _, b := range in {
-		if unicode.IsPrint(rune(b)) {
-			rv.WriteByte(b)
-		}
-	}
-	rv.WriteByte('"')
-	rvb := rv.Bytes()
-	if utf8.Valid(rvb) {
-		return rvb
-	}
-	return []byte(`""`)
+  data, err := t.MarshalJSON()
+  panicOn(err)
+  val := string(data)
+  return fmt.Sprintf("{Id: %X, Val: %v}", t.Id, val)
 }
 
 func (t *Tag) MarshalJSON() ([]byte, error) {
@@ -475,3 +403,26 @@ func (t *Tag) MarshalJSON() ([]byte, error) {
 	}
 	panic("Unhandled type")
 }
+
+func nullString(in []byte) []byte {
+	rv := bytes.Buffer{}
+	rv.WriteByte('"')
+	for _, b := range in {
+		if unicode.IsPrint(rune(b)) {
+			rv.WriteByte(b)
+		}
+	}
+	rv.WriteByte('"')
+	rvb := rv.Bytes()
+	if utf8.Valid(rvb) {
+		return rvb
+	}
+	return []byte(`""`)
+}
+
+func panicOn(err error) {
+  if err != nil {
+    panic("unexpected error: " + err.Error())
+  }
+}
+
