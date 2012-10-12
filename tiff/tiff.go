@@ -176,6 +176,11 @@ type Tag struct {
 	Val []byte
 
 	order binary.ByteOrder
+
+  intVals []int64
+  floatVals []float64
+  ratVals [][]int64
+  strVal string
 }
 
 // DecodeTag parses a tiff-encoded IFD tag from r and returns Tag object. The
@@ -225,7 +230,120 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 		t.Val = val
   }
 
+  t.convertVals()
+
 	return t, nil
+}
+
+func (t *Tag) convertVals() {
+	switch t.Fmt {
+	case 2:
+		t.strVal = string(t.Val)
+	case 1, 3, 4, 6, 8, 9:
+    t.convertInts()
+	case 5, 10:
+    t.ratVals = make([][]int64, int(t.Ncomp))
+		for i := 0; i < int(t.Ncomp); i++ {
+			n, d := t.Rat2(i)
+			t.ratVals[i] = []int64{n, d}
+		}
+	case 11, 12:
+    t.floatVals = make([]float64, int(t.Ncomp))
+		for i := 0; i < int(t.Ncomp); i++ {
+			t.floatVals[i] = t.Float(i)
+		}
+	}
+}
+
+func (t *Tag) convertInts() int64 {
+  t.intVals = make([]int64, int(t.Ncomp))
+  buf := bytes.NewReader(t.Val)
+  for i := 0; i < int(t.Ncomp); i++ {
+    var u int64
+    switch t.Fmt {
+    case 1:
+      var v uint8
+      err = binary.Read(buf, t.order, &v)
+      u = int64(v)
+    case 3:
+      var v uint16
+      err = binary.Read(buf, t.order, &v)
+      u = int64(v)
+    case 4:
+      var v uint32
+      err = binary.Read(buf, t.order, &v)
+      u = int64(v)
+    case 6:
+      var v int8
+      err = binary.Read(buf, t.order, &v)
+      u = int64(v)
+    case 8:
+      var v int16
+      err = binary.Read(buf, t.order, &v)
+      u = int64(v)
+    case 9:
+      var v int32
+      err = binary.Read(buf, t.order, &v)
+      u = int64(v)
+    }
+    if err != nil {
+      panic("unexpected error: " + err.Error())
+    }
+    t.intVals[i] = u
+  }
+}
+
+func (t *Tag) convertRats() (num, den int64) {
+  t.ratVals = make([][]int64, int(t.Ncomp))
+  r := bytes.NewReader(t.Val)
+
+  if t.Fmt == 10 {
+    for i := 0; i < int(t.Ncomp); i++ {
+      var n, d int32
+      err := binary.Read(r, t.order, &n)
+      if err != nil {
+        panic("unexpected error: " + err.Error())
+      }
+      err = binary.Read(r, t.order, &d)
+      if err != nil {
+        panic("unexpeced error: " + err.Error())
+      }
+      t.ratVals[i] = []int64{n, d}
+    }
+  } else if t.Fmt == 5 {
+    for i := 0; i < int(t.Ncomp); i++ {
+      var n, d uint32
+      err := binary.Read(r, t.order, &n)
+      if err != nil {
+        panic(err.Error())
+      }
+      err = binary.Read(r, t.order, &d)
+      if err != nil {
+        panic(err.Error())
+      }
+      t.ratVals[i] = []int64{n, d}
+  }
+}
+
+func (t *Tag) Float(i int) float64 {
+  buf := bytes.NewReader(t.Val)
+
+  var u float64
+	if t.Fmt == 11 {
+    var v float32
+    err = binary.Read(buf, t.order, &v)
+    u = float64(v)
+  } else if t.Fmt == 12 {
+    err = binary.Read(buf, t.order, &u)
+  } else {
+		panic("Tag format is not 'float'")
+	}
+
+  if err != nil {
+    panic("unexpected error: " + err.Error())
+  }
+
+	return u
 }
 
 // Rat returns the tag's i'th value as a rational number. It panics if the tag format
@@ -240,83 +358,21 @@ func (t *Tag) Rat(i int) *big.Rat {
 // numerator-denominator pair. It panics if the tag format is not rational
 // or if the tag value has no i'th component.
 func (t *Tag) Rat2(i int) (num, den int64) {
-	start := i * int(fmtSize[t.Fmt])
-	end := start + 8
-
-	r := bytes.NewReader(t.Val[start:end])
-
-	if t.Fmt == 10 {
-		var n, d int32
-		err := binary.Read(r, t.order, &n)
-		if err != nil {
-			panic(err.Error())
-		}
-		err = binary.Read(r, t.order, &d)
-		if err != nil {
-			panic(err.Error())
-		}
-		return int64(n), int64(d)
-	} else if t.Fmt == 5 {
-		var n, d uint32
-		err := binary.Read(r, t.order, &n)
-		if err != nil {
-			panic(err.Error())
-		}
-		err = binary.Read(r, t.order, &d)
-		if err != nil {
-			panic(err.Error())
-		}
-		return int64(n), int64(d)
-	} else {
+  if t.Fmt != 5 && t.Fmt != 10 {
 		panic("Tag format is not 'rational'")
-	}
-	return 0, 0
+  }
+  return t.ratVals[i][0], t.ratVals[i][1]
 }
 
 // Int returns the tag's i'th value as an integer. It panics if the tag format is not
 // an integer or if the tag value has no i'th component.
 func (t *Tag) Int(i int) int64 {
-  buf := bytes.NewReader(t.Val)
-	start := i * int(fmtSize[t.Fmt])
-
-  _, err := buf.Seek(int64(start), 0)
-  if err != nil {
-    panic("invalid value index")
-  }
-
-	var u int64
-	switch t.Fmt {
-	case 1:
-    var v uint8
-    err = binary.Read(buf, t.order, &v)
-    u = int64(v)
-	case 3:
-    var v uint16
-    err = binary.Read(buf, t.order, &v)
-    u = int64(v)
-	case 4:
-    var v uint32
-    err = binary.Read(buf, t.order, &v)
-    u = int64(v)
-	case 6:
-    var v int8
-    err = binary.Read(buf, t.order, &v)
-    u = int64(v)
-	case 8:
-    var v int16
-    err = binary.Read(buf, t.order, &v)
-    u = int64(v)
-	case 9:
-    var v int32
-    err = binary.Read(buf, t.order, &v)
-    u = int64(v)
-	default:
+  switch t.Fmt {
+  case 1, 3, 4, 6, 8, 9:
+  default:
 		panic("Tag format is not 'int'")
-	}
-  if err != nil {
-    panic("unexpected error: " + err.Error())
   }
-	return u
+  return t.intVals[i]
 }
 
 // Float returns the tag's i'th value as a float. It panics if the tag format is not
@@ -348,18 +404,18 @@ func (t *Tag) Float(i int) float64 {
 	return u
 }
 
-// StringVal returns the tag's value as a string. It panics if the tag format is not
-// an ascii string.
+// StringVal returns the tag's value as a string. It panics if the tag
+// format type is not ascii string.
 func (t *Tag) StringVal() string {
-	if t.Fmt != 2 {
+  if t.Fmt != 2 {
 		panic("Tag format is not 'ascii string'")
-	}
-	return string(t.Val)
+  }
+  return t.strVal
 }
 
 // String returns a nicely formatted version of the tag.
 func (t *Tag) String() string {
-	msg := fmt.Sprintf("Tag{Id=%X, Val=[", t.Id)
+  msg := fmt.Sprintf("{Id:%X, Val:[", t.Id)
 	switch t.Fmt {
 	case 2:
 		msg += string(t.Val)
