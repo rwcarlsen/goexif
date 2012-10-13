@@ -1,8 +1,8 @@
 goexif
 ======
 
-Provides decoding of basic exif and tiff encoded data. Still in alpha - no garuntees.
-Suggestions/pull requests welcome.  Funcionality is split into two packages - "exif" and "tiff"
+Provides decoding of basic exif and tiff encoded data. Still in alpha - no guarantees.
+Suggestions and pull requests are welcome.  Functionality is split into two packages - "exif" and "tiff"
 The exif package depends on the tiff package. 
 Documentation can be found at http://go.pkgdoc.org/github.com/rwcarlsen/goexif
 
