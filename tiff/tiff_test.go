@@ -31,7 +31,6 @@ type tagTest struct {
 ///////////////////////////////////////////////
 //// Big endian Tests /////////////////////////
 ///////////////////////////////////////////////
-
 var bigEndSet = []tagTest{
   //////////// string type //////////////
   tagTest{
@@ -114,12 +113,105 @@ var bigEndSet = []tagTest{
   },
 }
 
+///////////////////////////////////////////////
+//// Little endian Tests //////////////////////
+///////////////////////////////////////////////
+var littleEndSet = []tagTest{
+  //////////// string type //////////////
+  tagTest{
+    //   {"TgId", "TYPE", "N-VALUES", "OFFSET--", "VAL..."},
+    input{"0300", "0200", "02000000", "11000000", ""},
+    output{0x0003, 0x0002, 0x0002, []byte{0x11, 0x00}},
+  },
+  tagTest{
+    input{"0100", "0200", "06000000", "12000000", "111213141516"},
+    output{0x0001, 0x0002, 0x0006, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16}},
+  },
+  //////////// int (1-byte) type ////////////////
+  tagTest{
+    input{"0100", "0100", "01000000", "11000000", ""},
+    output{0x0001, 0x0001, 0x0001, []byte{0x11}},
+  },
+  tagTest{
+    input{"0100", "0100", "05000000", "10000000", "1112131415"},
+    output{0x0001, 0x0001, 0x0005, []byte{0x11, 0x12, 0x13, 0x14, 0x15}},
+  },
+  tagTest{
+    input{"0100", "0600", "01000000", "11000000", ""},
+    output{0x0001, 0x0006, 0x0001, []byte{0x11}},
+  },
+  tagTest{
+    input{"0100", "0600", "05000000", "10000000", "1112131415"},
+    output{0x0001, 0x0006, 0x0005, []byte{0x11, 0x12, 0x13, 0x14, 0x15}},
+  },
+  //////////// int (2-byte) types ////////////////
+  tagTest{
+    input{"0001", "0003", "00000002", "11111212", ""},
+    output{0x0001, 0x0003, 0x0002, []byte{0x11, 0x11, 0x12, 0x12}},
+  },
+  tagTest{
+    input{"0001", "0003", "00000003", "00000010", "111213141516"},
+    output{0x0001, 0x0003, 0x0003, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16}},
+  },
+  tagTest{
+    input{"0001", "0008", "00000001", "11120000", ""},
+    output{0x0001, 0x0008, 0x0001, []byte{0x11, 0x12}},
+  },
+  tagTest{
+    input{"0001", "0008", "00000003", "00000100", "111213141516"},
+    output{0x0001, 0x0008, 0x0003, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16}},
+  },
+  //////////// int (4-byte) types ////////////////
+  tagTest{
+    input{"0001", "0004", "00000001", "11121314", ""},
+    output{0x0001, 0x0004, 0x0001, []byte{0x11, 0x12, 0x13, 0x14}},
+  },
+  tagTest{
+    input{"0001", "0004", "00000002", "00000010", "1112131415161718"},
+    output{0x0001, 0x0004, 0x0002, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18}},
+  },
+  tagTest{
+    input{"0001", "0009", "00000001", "11121314", ""},
+    output{0x0001, 0x0009, 0x0001, []byte{0x11, 0x12, 0x13, 0x14}},
+  },
+  tagTest{
+    input{"0001", "0009", "00000002", "00000011", "1112131415161819"},
+    output{0x0001, 0x0009, 0x0002, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18, 0x19}},
+  },
+  //////////// rational types ////////////////////
+  tagTest{
+    input{"0001", "0005", "00000001", "00000010", "1112131415161718"},
+    output{0x0001, 0x0005, 0x0001, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18}},
+  },
+  tagTest{
+    input{"0001", "000A", "00000001", "00000011", "1112131415161819"},
+    output{0x0001, 0x000A, 0x0001, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18, 0x19}},
+  },
+  //////////// float types ///////////////////////
+  tagTest{
+    input{"0001", "0005", "00000001", "00000010", "1112131415161718"},
+    output{0x0001, 0x0005, 0x0001, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18}},
+  },
+  tagTest{
+    input{"0101", "000A", "00000001", "00000011", "1112131415161819"},
+    output{0x0101, 0x000A, 0x0001, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x18, 0x19}},
+  },
+}
+
 func TestDecodeTag_bigendian(t *testing.T) {
-  for i, tst := range bigEndSet {
-    data := buildInput(tst.in, binary.BigEndian)
+  testSet(t, binary.BigEndian, bigEndSet)
+}
+
+func TestDecodeTag_littleendian(t *testing.T) {
+  testSet(t, binary.LittleEndian, littleEndSet)
+}
+
+func testSet(t *testing.T, order binary.ByteOrder, set []tagTest) {
+  for i, tst := range set {
+    data := buildInput(tst.in, order)
     buf := bytes.NewReader(data)
 
-    tg, err := DecodeTag(buf, binary.BigEndian)
+    tg, err := DecodeTag(buf, order)
     if err != nil {
       t.Errorf("tag %v%+v decode failed: %v", i, tst.in, err)
       continue
