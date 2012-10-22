@@ -9,21 +9,6 @@ import (
 	"io/ioutil"
 )
 
-var fmtSize = map[uint16]uint32{
-	1:  1,
-	2:  1,
-	3:  2,
-	4:  4,
-	5:  8,
-	6:  1,
-	7:  1,
-	8:  2,
-	9:  4,
-	10: 8,
-	11: 4,
-	12: 8,
-}
-
 // ReadAtReader is used when decoding Tiff tags and directories
 type ReadAtReader interface {
 	io.Reader

@@ -23,6 +23,21 @@ const (
   OtherVal
 )
 
+var fmtSize = map[uint16]uint32{
+	1:  1,
+	2:  1,
+	3:  2,
+	4:  4,
+	5:  8,
+	6:  1,
+	7:  1,
+	8:  2,
+	9:  4,
+	10: 8,
+	11: 4,
+	12: 8,
+}
+
 // Tag reflects the parsed content of a tiff IFD tag. 
 type Tag struct {
 	// Id is the 2-byte tiff tag identifier
