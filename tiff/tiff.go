@@ -163,12 +163,15 @@ func (d *Dir) String() string {
 	return s + "}"
 }
 
+type FormatType int
+
 const (
-  IntVal = iota
+  IntVal FormatType = iota
   FloatVal
   RatVal
   StringVal
   UndefVal
+  OtherVal
 )
 
 // Tag reflects the parsed content of a tiff IFD tag. 
@@ -176,16 +179,15 @@ type Tag struct {
 	// Id is the 2-byte tiff tag identifier
 	Id uint16
 	// Fmt is an integer (1 through 12) indicating the tag value's format.
-	Fmt int
-	// Ncomp is the number of type format stored in the tag's value (i.e. the tag's
-	// value is an array of type format and length Ncomp).
+	Fmt uint16
+	// Ncomp is the number of type Fmt stored in the tag's value (i.e. the tag's
+	// value is an array of type Fmt and length Ncomp).
 	Ncomp uint32
 	// Val holds the bytes that represent the tag's value.
 	Val []byte
 
 	order binary.ByteOrder
 
-	format uint16
   intVals []int64
   floatVals []float64
   ratVals [][]int64
@@ -205,7 +207,7 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 		return nil, errors.New("tiff: tag id read failed: " + err.Error())
 	}
 
-	err = binary.Read(r, order, &t.format)
+	err = binary.Read(r, order, &t.Fmt)
 	if err != nil {
 		return nil, errors.New("tiff: tag format read failed: " + err.Error())
 	}
@@ -215,7 +217,7 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 		return nil, errors.New("tiff: tag component count read failed: " + err.Error())
 	}
 
-	valLen := fmtSize[t.format] * t.Ncomp
+	valLen := fmtSize[t.Fmt] * t.Ncomp
 	var offset uint32
   if valLen > 4 {
     binary.Read(r, order, &offset)
@@ -239,19 +241,6 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 		t.Val = val
   }
 
-  switch t.format {
-  case 1, 3, 4, 6, 8, 9:
-    t.Fmt = IntVal
-  case 5, 10:
-    t.Fmt = RatVal
-  case 11, 12:
-    t.Fmt = FloatVal
-  case 2:
-    t.Fmt = StringVal
-  case 7:
-    t.Fmt = UndefVal
-  }
-
   t.convertVals()
 
 	return t, nil
@@ -260,7 +249,7 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 func (t *Tag) convertVals() {
   r := bytes.NewReader(t.Val)
 
-	switch t.format {
+	switch t.Fmt {
 	case 2: // ascii string
 		t.strVal = string(t.Val)
   case 1:
@@ -350,47 +339,64 @@ func (t *Tag) convertVals() {
 	}
 }
 
+// Format returns a value indicating which method can be called to retrieve the
+// tag's value properly typed (e.g. integer, rational, etc.).
+func (t *Tag) Format() FormatType {
+  switch t.Fmt {
+  case 1, 3, 4, 6, 8, 9:
+    return IntVal
+  case 5, 10:
+    return RatVal
+  case 11, 12:
+    return FloatVal
+  case 2:
+    return StringVal
+  case 7:
+    return UndefVal
+  }
+  return OtherVal
+}
+
 // Rat returns the tag's i'th value as a rational number. It panics if the tag format
-// is not rational, if the denominator is zero, or if the tag has no i'th
-// component. If a denominator is zero, use Rat2.
+// is not RatVal, if the denominator is zero, or if the tag has no i'th
+// component. If a denominator could be zero, use Rat2.
 func (t *Tag) Rat(i int) *big.Rat {
 	n, d := t.Rat2(i)
 	return big.NewRat(n, d)
 }
 
 // Rat2 returns the tag's i'th value as a rational number represented by a
-// numerator-denominator pair. It panics if the tag format is not rational
+// numerator-denominator pair. It panics if the tag format is not RatVal
 // or if the tag value has no i'th component.
 func (t *Tag) Rat2(i int) (num, den int64) {
-  if t.format != 5 && t.format != 10 {
+  if t.Format() != RatVal {
 		panic("Tag format is not 'rational'")
   }
   return t.ratVals[i][0], t.ratVals[i][1]
 }
 
 // Int returns the tag's i'th value as an integer. It panics if the tag format is not
-// an integer or if the tag value has no i'th component.
+// IntVal or if the tag value has no i'th component.
 func (t *Tag) Int(i int) int64 {
-  switch t.format {
-  case 1, 3, 4, 6, 8, 9:
-    return t.intVals[i]
+  if t.Format() != IntVal {
+    panic("Tag format is not 'int'")
   }
-  panic("Tag format is not 'int'")
+  return t.intVals[i]
 }
 
 // Float returns the tag's i'th value as a float. It panics if the tag format is not
-// a float or if the tag value has no i'th component.
+// FloatVal or if the tag value has no i'th component.
 func (t *Tag) Float(i int) float64 {
-  if t.format != 11 && t.format != 12 {
+  if t.Format() != FloatVal {
 		panic("Tag format is not 'float'")
   }
   return t.floatVals[i]
 }
 
 // StringVal returns the tag's value as a string. It panics if the tag
-// format type is not ascii string.
+// format is not StringVal
 func (t *Tag) StringVal() string {
-  if t.format != 2 {
+  if t.Format() != StringVal {
 		panic("Tag format is not 'ascii string'")
   }
   return t.strVal
@@ -405,25 +411,28 @@ func (t *Tag) String() string {
 }
 
 func (t *Tag) MarshalJSON() ([]byte, error) {
-	switch t.format {
-	case 2, 7:
+  f := t.Format()
+
+	switch f {
+	case StringVal, UndefVal:
 		return nullString(t.Val), nil
-	case 1, 3, 4, 5, 6, 8, 9, 10, 11, 12:
-		rv := []string{}
-		for i := 0; i < int(t.Ncomp); i++ {
-			switch t.format {
-			case 5, 10:
-				n, d := t.Rat2(i)
-				rv = append(rv, fmt.Sprintf(`"%v/%v"`, n, d))
-			case 11, 12:
-				rv = append(rv, fmt.Sprintf("%v", t.Float(i)))
-			default:
-				rv = append(rv, fmt.Sprintf("%v", t.Int(i)))
-			}
-		}
-		return []byte(fmt.Sprintf(`[%s]`, strings.Join(rv, ","))), nil
-	}
-	panic("Unhandled type")
+  case OtherVal:
+    panic("Unhandled type")
+  }
+
+  rv := []string{}
+  for i := 0; i < int(t.Ncomp); i++ {
+    switch f {
+    case RatVal:
+      n, d := t.Rat2(i)
+      rv = append(rv, fmt.Sprintf(`"%v/%v"`, n, d))
+    case FloatVal:
+      rv = append(rv, fmt.Sprintf("%v", t.Float(i)))
+    case IntVal:
+      rv = append(rv, fmt.Sprintf("%v", t.Int(i)))
+    }
+  }
+  return []byte(fmt.Sprintf(`[%s]`, strings.Join(rv, ","))), nil
 }
 
 func nullString(in []byte) []byte {
