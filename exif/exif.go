@@ -73,7 +73,7 @@ func Decode(r io.Reader) (*Exif, error) {
 		interOp:       map[uint16]*tiff.Tag{},
 		tif:           tif,
 	}
-	x.loadStdFields()
+
 	ifd0 := tif.Dirs[0]
 	for _, tag := range ifd0.Tags {
 		x.main[tag.Id] = tag
@@ -127,15 +127,15 @@ func (x *Exif) Get(name string) *tiff.Tag {
 	return nil
 }
 
-func (x *Exif) Iter() func() *tiff.Tag {
+func (x *Exif) Iter() func() (string, *tiff.Tag) {
   i := 0
-  return func() *tiff.Tag {
+  return func() (string, *tiff.Tag) {
     if i == len(fieldList) {
-      return nil
+      return "", nil
     }
     next := fieldList[i]
     i++
-    return x.Get(next)
+    return next, x.Get(next)
   }
 }
 

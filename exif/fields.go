@@ -2,10 +2,22 @@
 package exif
 
 func init() {
-  fieldList = make([]string, len(fields))
+  fieldList = make([]string, len(fields) + len(subFields) + len(gpsFields) + len(interOpFields))
 
   i := 0
   for name, _ := range fields {
+    fieldList[i] = name
+    i++
+  }
+  for name, _ := range subFields {
+    fieldList[i] = name
+    i++
+  }
+  for name, _ := range gpsFields {
+    fieldList[i] = name
+    i++
+  }
+  for name, _ := range interOpFields {
     fieldList[i] = name
     i++
   }
@@ -13,7 +25,7 @@ func init() {
 
 var fieldList []string
 
-var fields := map[string]uint16{
+var fields = map[string]uint16{
 	/////////////////////////////////////
 	////////// IFD 0 ////////////////////
 	/////////////////////////////////////
@@ -44,7 +56,9 @@ var fields := map[string]uint16{
 
 	// private tags
 	"ExifIFDPointer": exifPointer,
+}
 
+var subFields = map[string]uint16{
 	/////////////////////////////////////
 	////////// Exif sub IFD /////////////
 	/////////////////////////////////////
@@ -115,7 +129,9 @@ var fields := map[string]uint16{
 	"Sharpness": 0xA40A,
 	"DeviceSettingDescription": 0xA40B,
 	"SubjectDistanceRange": 0xA40C,
+}
 
+var gpsFields = map[string]uint16{
 	/////////////////////////////////////
 	//// GPS sub-IFD ////////////////////
 	/////////////////////////////////////
@@ -150,7 +166,9 @@ var fields := map[string]uint16{
 	"GPSAreaInformation": 0x1C,
 	"GPSDateStamp": 0x1D,
 	"GPSDifferential": 0x1E,
+}
 
+var interOpFields = map[string]uint16{
 	/////////////////////////////////////
 	//// Interoperability sub-IFD ///////
 	/////////////////////////////////////
