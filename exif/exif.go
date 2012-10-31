@@ -127,6 +127,14 @@ func (x *Exif) Get(name string) *tiff.Tag {
 	return nil
 }
 
+type Walker interface {
+  Walk(name string, tag *tiff.Tag) error
+}
+
+func (x *Exif) Walk(w Walker) error {
+  for name, id := 
+}
+
 func (x *Exif) Iter() func() (string, *tiff.Tag) {
   i := 0
   return func() (string, *tiff.Tag) {

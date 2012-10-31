@@ -1,30 +1,6 @@
 
 package exif
 
-func init() {
-  fieldList = make([]string, len(fields) + len(subFields) + len(gpsFields) + len(interOpFields))
-
-  i := 0
-  for name, _ := range fields {
-    fieldList[i] = name
-    i++
-  }
-  for name, _ := range subFields {
-    fieldList[i] = name
-    i++
-  }
-  for name, _ := range gpsFields {
-    fieldList[i] = name
-    i++
-  }
-  for name, _ := range interOpFields {
-    fieldList[i] = name
-    i++
-  }
-}
-
-var fieldList []string
-
 var fields = map[string]uint16{
 	/////////////////////////////////////
 	////////// IFD 0 ////////////////////
