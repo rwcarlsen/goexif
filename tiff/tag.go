@@ -281,7 +281,7 @@ func (t *Tag) MarshalJSON() ([]byte, error) {
 	case StringVal, UndefVal:
 		return nullString(t.Val), nil
   case OtherVal:
-    panic("Unhandled type")
+    panic(fmt.Sprintf("Unhandled type Fmt=%v", t.Fmt))
   }
 
   rv := []string{}
