@@ -19,13 +19,21 @@ const (
 	interopPointer = 0xA005
 )
 
+type tagNotPresentErr string
+
+func (err custErr) Error() string {
+  return fmt.Sprint("exif: tag '%v' is not present", err)
+}
+
+func IsTagNotPresentErr(err error) bool {
+  _, ok := err.(tagNotPresentErr)
+  return ok
+}
 
 type Exif struct {
 	tif *tiff.Tiff
 
 	main   map[uint16]*tiff.Tag
-	gps       map[uint16]*tiff.Tag
-	interOp       map[uint16]*tiff.Tag
 }
 
 func (x Exif) MarshalJSON() ([]byte, error) {
@@ -33,17 +41,6 @@ func (x Exif) MarshalJSON() ([]byte, error) {
 
 	for name, id := range fields {
 		if tag, ok := x.main[id]; ok {
-			m[name] = tag
-		}
-	}
-
-	for name, id := range gpsFields {
-		if tag, ok := x.gps[id]; ok {
-			m[name] = tag
-		}
-	}
-	for name, id := range interOpFields {
-		if tag, ok := x.interOp[id]; ok {
 			m[name] = tag
 		}
 	}
@@ -69,8 +66,6 @@ func Decode(r io.Reader) (*Exif, error) {
 	// build an exif structure from the tiff
 	x := &Exif{
 		main:          map[uint16]*tiff.Tag{},
-		gps:           map[uint16]*tiff.Tag{},
-		interOp:       map[uint16]*tiff.Tag{},
 		tif:           tif,
 	}
 
@@ -80,20 +75,20 @@ func Decode(r io.Reader) (*Exif, error) {
 	}
 
 	// recurse into exif, gps, and interop sub-IFDs
-	if err = x.loadSubDir(er, exifPointer, x.main); err != nil {
+	if err = x.loadSubDir(er, exifPointer); err != nil {
 		return x, err
 	}
-	if err = x.loadSubDir(er, gpsPointer, x.gps); err != nil {
+	if err = x.loadSubDir(er, gpsPointer); err != nil {
 		return x, err
 	}
-	if err = x.loadSubDir(er, interopPointer, x.interOp); err != nil {
+	if err = x.loadSubDir(er, interopPointer); err != nil {
 		return x, err
 	}
 
 	return x, nil
 }
 
-func (x *Exif) loadSubDir(r *bytes.Reader, tagId uint16, tags map[uint16]*tiff.Tag) error {
+func (x *Exif) loadSubDir(r *bytes.Reader, tagId uint16) error {
 	tag, ok := x.main[tagId]
 	if !ok {
 		return nil
@@ -109,22 +104,25 @@ func (x *Exif) loadSubDir(r *bytes.Reader, tagId uint16, tags map[uint16]*tiff.T
 		return errors.New("exif: sub-IFD decode failed: " + err.Error())
 	}
 	for _, tag := range subDir.Tags {
-		tags[tag.Id] = tag
+		x.main[tag.Id] = tag
 	}
 	return nil
 }
 
 // Get retrieves the exif tag for the given field name. It returns nil if the
 // tag name is not found.
-func (x *Exif) Get(name string) *tiff.Tag {
-	if tg, ok := x.main[fields[name]]; ok {
-		return tg
-	} else if tg, ok := x.gps[gpsFields[name]]; ok {
-		return tg
-	} else if tg, ok := x.interOp[interOpFields[name]]; ok {
-		return tg
+func (x *Exif) Get(name string) (*tiff.Tag, error) {
+  id, ok := fields[name]
+  if !ok {
+    msg := fmt.Sprintf("exif: invalid tag name '%v'", name)
+    return nil, errors.New(msg)
+  }
+
+	if tg, ok := x.main[id]; ok {
+		return tg, nil
 	}
-	return nil
+
+	return nil, tagNotPresentErr(name)
 }
 
 type Walker interface {
@@ -132,7 +130,9 @@ type Walker interface {
 }
 
 func (x *Exif) Walk(w Walker) error {
-  for name, id := 
+  for name, id := range fields {
+    
+  }
 }
 
 func (x *Exif) Iter() func() (string, *tiff.Tag) {
@@ -149,21 +149,9 @@ func (x *Exif) Iter() func() (string, *tiff.Tag) {
 
 // String returns a pretty text representation of the decoded exif data.
 func (x *Exif) String() string {
-	msg := "Main:\n"
+	msg := ""
 	for name, id := range fields {
 		if tag, ok := x.main[id]; ok {
-			msg += name + ":" + tag.String() + "\n"
-		}
-	}
-	msg += "\n\nGPS:\n"
-	for name, id := range gpsFields {
-		if tag, ok := x.gps[id]; ok {
-			msg += name + ":" + tag.String() + "\n"
-		}
-	}
-	msg += "\n\nInteroperability:\n"
-	for name, id := range interOpFields {
-		if tag, ok := x.interOp[id]; ok {
 			msg += name + ":" + tag.String() + "\n"
 		}
 	}

@@ -32,9 +32,7 @@ var fields = map[string]uint16{
 
 	// private tags
 	"ExifIFDPointer": exifPointer,
-}
 
-var subFields = map[string]uint16{
 	/////////////////////////////////////
 	////////// Exif sub IFD /////////////
 	/////////////////////////////////////
@@ -105,9 +103,7 @@ var subFields = map[string]uint16{
 	"Sharpness": 0xA40A,
 	"DeviceSettingDescription": 0xA40B,
 	"SubjectDistanceRange": 0xA40C,
-}
 
-var gpsFields = map[string]uint16{
 	/////////////////////////////////////
 	//// GPS sub-IFD ////////////////////
 	/////////////////////////////////////
@@ -142,9 +138,7 @@ var gpsFields = map[string]uint16{
 	"GPSAreaInformation": 0x1C,
 	"GPSDateStamp": 0x1D,
 	"GPSDifferential": 0x1E,
-}
 
-var interOpFields = map[string]uint16{
 	/////////////////////////////////////
 	//// Interoperability sub-IFD ///////
 	/////////////////////////////////////
