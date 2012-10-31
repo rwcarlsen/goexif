@@ -20,10 +20,12 @@ func ExampleDecode() {
 		log.Fatal(err)
 	}
 
-	camMake := x.Get("Make").StringVal()
-	camModel := x.Get("Model").StringVal()
-	date := x.Get("DateTimeOriginal").StringVal()
-	numer, denom := x.Get("FocalLength").Rat2(0) // retrieve first (only) rat. value
+	camModel, _ := x.Get("Model")
+	date, _ := x.Get("DateTimeOriginal")
+	fmt.Println(camModel.StringVal())
+	fmt.Println(date.StringVal())
 
-	fmt.Println(camMake, camModel, date, numer, denom)
+	focal, _ := x.Get("FocalLength")
+  numer, denom := focal.Rat2(0) // retrieve first (only) rat. value
+  fmt.Printf("%v/%v", numer, denom)
 }
