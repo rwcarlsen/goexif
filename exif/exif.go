@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+  "fmt"
 
 	"github.com/rwcarlsen/goexif/tiff"
 )
@@ -21,7 +22,7 @@ const (
 
 type tagNotPresentErr string
 
-func (err custErr) Error() string {
+func (err tagNotPresentErr) Error() string {
   return fmt.Sprint("exif: tag '%v' is not present", err)
 }
 
@@ -34,18 +35,6 @@ type Exif struct {
 	tif *tiff.Tiff
 
 	main   map[uint16]*tiff.Tag
-}
-
-func (x Exif) MarshalJSON() ([]byte, error) {
-	m := map[string]interface{}{}
-
-	for name, id := range fields {
-		if tag, ok := x.main[id]; ok {
-			m[name] = tag
-		}
-	}
-
-	return json.Marshal(m)
 }
 
 // Decode parses exif encoded data from r and returns a queryable Exif object.
@@ -125,26 +114,29 @@ func (x *Exif) Get(name string) (*tiff.Tag, error) {
 	return nil, tagNotPresentErr(name)
 }
 
+// Walker is the interface used to traverse all exif fields of an Exif object.
+// Returning a non-nil error aborts the walk/traversal.
 type Walker interface {
   Walk(name string, tag *tiff.Tag) error
 }
 
+// Walk calls the Walk method of w with the name and tag for every non-nil exif
+// field.
 func (x *Exif) Walk(w Walker) error {
-  for name, id := range fields {
-    
-  }
-}
-
-func (x *Exif) Iter() func() (string, *tiff.Tag) {
-  i := 0
-  return func() (string, *tiff.Tag) {
-    if i == len(fieldList) {
-      return "", nil
+  for name, _ := range fields {
+    tag, err := x.Get(name)
+    if IsTagNotPresentErr(err) {
+      continue
+    } else if err != nil {
+      panic("field list access/construction is broken - this should never happen")
     }
-    next := fieldList[i]
-    i++
-    return next, x.Get(next)
+
+    err = w.Walk(name, tag)
+    if err != nil {
+      return err
+    }
   }
+  return nil
 }
 
 // String returns a pretty text representation of the decoded exif data.
@@ -156,6 +148,18 @@ func (x *Exif) String() string {
 		}
 	}
 	return msg
+}
+
+func (x Exif) MarshalJSON() ([]byte, error) {
+	m := map[string]interface{}{}
+
+	for name, id := range fields {
+		if tag, ok := x.main[id]; ok {
+			m[name] = tag
+		}
+	}
+
+	return json.Marshal(m)
 }
 
 type appSec struct {

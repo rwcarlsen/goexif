@@ -3,6 +3,7 @@ package exif
 import (
 	"os"
 	"testing"
+  "github.com/rwcarlsen/goexif/tiff"
 )
 
 func TestDecode(t *testing.T) {
@@ -20,11 +21,21 @@ func TestDecode(t *testing.T) {
 		t.Fatal("bad err")
 	}
 
-	t.Logf("Model: %v", x.Get("Model").StringVal())
+  val, err := x.Get("Model")
+	t.Logf("Model: %v", val)
 	t.Log(x)
 }
 
-func TestIter(t *testing.T) {
+type walker struct{
+  t *testing.T
+}
+
+func (w *walker) Walk(name string, tag *tiff.Tag) error {
+  w.t.Logf("%v: %v", name, tag)
+  return nil
+}
+
+func TestWalk(t *testing.T) {
 	name := "sample1.jpg"
 	f, err := os.Open(name)
 	if err != nil {
@@ -39,10 +50,8 @@ func TestIter(t *testing.T) {
 		t.Fatal("bad err")
 	}
 
-  it := x.Iter()
-  for name, tag := it(); tag != nil; name, tag = it() {
-    t.Logf("%v: %v", name, tag)
-  }
+  x.Walk(&walker{t})
+
 }
 
 func TestMarshal(t *testing.T) {
