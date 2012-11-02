@@ -1,9 +1,9 @@
 package exif
 
 import (
+	"github.com/rwcarlsen/goexif/tiff"
 	"os"
 	"testing"
-  "github.com/rwcarlsen/goexif/tiff"
 )
 
 func TestDecode(t *testing.T) {
@@ -21,18 +21,18 @@ func TestDecode(t *testing.T) {
 		t.Fatal("bad err")
 	}
 
-  val, err := x.Get("Model")
+	val, err := x.Get("Model")
 	t.Logf("Model: %v", val)
 	t.Log(x)
 }
 
-type walker struct{
-  t *testing.T
+type walker struct {
+	t *testing.T
 }
 
 func (w *walker) Walk(name string, tag *tiff.Tag) error {
-  w.t.Logf("%v: %v", name, tag)
-  return nil
+	w.t.Logf("%v: %v", name, tag)
+	return nil
 }
 
 func TestWalk(t *testing.T) {
@@ -50,7 +50,7 @@ func TestWalk(t *testing.T) {
 		t.Fatal("bad err")
 	}
 
-  x.Walk(&walker{t})
+	x.Walk(&walker{t})
 
 }
 

@@ -8,8 +8,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
-  "fmt"
 
 	"github.com/rwcarlsen/goexif/tiff"
 )
@@ -23,18 +23,18 @@ const (
 type tagNotPresentErr string
 
 func (err tagNotPresentErr) Error() string {
-  return fmt.Sprint("exif: tag '%v' is not present", err)
+	return fmt.Sprint("exif: tag '%v' is not present", err)
 }
 
 func IsTagNotPresentErr(err error) bool {
-  _, ok := err.(tagNotPresentErr)
-  return ok
+	_, ok := err.(tagNotPresentErr)
+	return ok
 }
 
 type Exif struct {
 	tif *tiff.Tiff
 
-	main   map[uint16]*tiff.Tag
+	main map[uint16]*tiff.Tag
 }
 
 // Decode parses exif encoded data from r and returns a queryable Exif object.
@@ -54,8 +54,8 @@ func Decode(r io.Reader) (*Exif, error) {
 
 	// build an exif structure from the tiff
 	x := &Exif{
-		main:          map[uint16]*tiff.Tag{},
-		tif:           tif,
+		main: map[uint16]*tiff.Tag{},
+		tif:  tif,
 	}
 
 	ifd0 := tif.Dirs[0]
@@ -101,11 +101,11 @@ func (x *Exif) loadSubDir(r *bytes.Reader, tagId uint16) error {
 // Get retrieves the exif tag for the given field name. It returns nil if the
 // tag name is not found.
 func (x *Exif) Get(name string) (*tiff.Tag, error) {
-  id, ok := fields[name]
-  if !ok {
-    msg := fmt.Sprintf("exif: invalid tag name '%v'", name)
-    return nil, errors.New(msg)
-  }
+	id, ok := fields[name]
+	if !ok {
+		msg := fmt.Sprintf("exif: invalid tag name '%v'", name)
+		return nil, errors.New(msg)
+	}
 
 	if tg, ok := x.main[id]; ok {
 		return tg, nil
@@ -117,26 +117,26 @@ func (x *Exif) Get(name string) (*tiff.Tag, error) {
 // Walker is the interface used to traverse all exif fields of an Exif object.
 // Returning a non-nil error aborts the walk/traversal.
 type Walker interface {
-  Walk(name string, tag *tiff.Tag) error
+	Walk(name string, tag *tiff.Tag) error
 }
 
 // Walk calls the Walk method of w with the name and tag for every non-nil exif
 // field.
 func (x *Exif) Walk(w Walker) error {
-  for name, _ := range fields {
-    tag, err := x.Get(name)
-    if IsTagNotPresentErr(err) {
-      continue
-    } else if err != nil {
-      panic("field list access/construction is broken - this should never happen")
-    }
+	for name, _ := range fields {
+		tag, err := x.Get(name)
+		if IsTagNotPresentErr(err) {
+			continue
+		} else if err != nil {
+			panic("field list access/construction is broken - this should never happen")
+		}
 
-    err = w.Walk(name, tag)
-    if err != nil {
-      return err
-    }
-  }
-  return nil
+		err = w.Walk(name, tag)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // String returns a pretty text representation of the decoded exif data.

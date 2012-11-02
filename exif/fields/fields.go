@@ -1,4 +1,3 @@
-
 package fields
 
 type Std struct {
@@ -125,13 +124,11 @@ type InterOp struct {
 }
 
 type Fields struct {
-  Std
-  Sub
-  GPS
+	Std
+	Sub
+	GPS
 }
 
 func New(x exif.Exif) *Fields {
 
-
 }
-
