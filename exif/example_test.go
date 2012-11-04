@@ -2,9 +2,10 @@ package exif_test
 
 import (
 	"fmt"
-	"github.com/rwcarlsen/goexif/exif"
 	"log"
 	"os"
+
+	"github.com/camlistore/goexif/exif"
 )
 
 func ExampleDecode() {

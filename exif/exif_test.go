@@ -1,9 +1,10 @@
 package exif
 
 import (
-	"github.com/rwcarlsen/goexif/tiff"
 	"os"
 	"testing"
+
+	"github.com/camlistore/goexif/tiff"
 )
 
 func TestDecode(t *testing.T) {

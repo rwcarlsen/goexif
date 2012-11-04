@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/rwcarlsen/goexif/tiff"
+	"github.com/camlistore/goexif/tiff"
 )
 
 const (
