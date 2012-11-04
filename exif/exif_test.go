@@ -30,7 +30,7 @@ type walker struct {
 	t *testing.T
 }
 
-func (w *walker) Walk(name string, tag *tiff.Tag) error {
+func (w *walker) Walk(name FieldName, tag *tiff.Tag) error {
 	w.t.Logf("%v: %v", name, tag)
 	return nil
 }
