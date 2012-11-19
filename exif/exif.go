@@ -22,10 +22,12 @@ const (
 
 // A TagNotPresentError is returned when the requested field is not
 // present in the EXIF.
-type TagNotPresentError FieldName
+type TagNotPresentError struct {
+	Name FieldName
+}
 
 func (tag TagNotPresentError) Error() string {
-	return fmt.Sprint("exif: tag %q is not present", tag)
+	return fmt.Sprintf("exif: tag %q is not present", tag.Name)
 }
 
 func isTagNotPresentErr(err error) bool {
@@ -112,7 +114,7 @@ func (x *Exif) Get(name FieldName) (*tiff.Tag, error) {
 	if tg, ok := x.main[id]; ok {
 		return tg, nil
 	}
-	return nil, TagNotPresentError(name)
+	return nil, TagNotPresentError{name}
 }
 
 // Walker is the interface used to traverse all exif fields of an Exif object.
