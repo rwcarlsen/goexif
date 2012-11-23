@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/camlistore/goexif/tiff"
+	"github.com/rwcarlsen/goexif/tiff"
 )
 
 func TestDecode(t *testing.T) {

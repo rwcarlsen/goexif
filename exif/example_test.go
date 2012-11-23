@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/camlistore/goexif/exif"
+	"github.com/rwcarlsen/goexif/exif"
 )
 
 func ExampleDecode() {
