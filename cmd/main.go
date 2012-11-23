@@ -29,7 +29,7 @@ func main() {
 
 type Walker struct {}
 
-func (_ Walker) Walk(name string, tag *tiff.Tag) error {
+func (_ Walker) Walk(name exif.FieldName, tag *tiff.Tag) error {
 	data, _ := tag.MarshalJSON()
 	fmt.Printf("%v: %v\n", name, string(data))
 	return nil
