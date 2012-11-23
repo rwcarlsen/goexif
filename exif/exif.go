@@ -20,14 +20,16 @@ const (
 	interopPointer = 0xA005
 )
 
-type tagNotPresentErr string
+// A TagNotPresentError is returned when the requested field is not
+// present in the EXIF.
+type TagNotPresentError FieldName
 
-func (err tagNotPresentErr) Error() string {
-	return fmt.Sprint("exif: tag '%v' is not present", err)
+func (tag TagNotPresentError) Error() string {
+	return fmt.Sprintf("exif: tag %q is not present", string(tag))
 }
 
-func IsTagNotPresentErr(err error) bool {
-	_, ok := err.(tagNotPresentErr)
+func isTagNotPresentErr(err error) bool {
+	_, ok := err.(TagNotPresentError)
 	return ok
 }
 
@@ -37,7 +39,7 @@ type Exif struct {
 	main map[uint16]*tiff.Tag
 }
 
-// Decode parses exif encoded data from r and returns a queryable Exif object.
+// Decode parses EXIF-encoded data from r and returns a queryable Exif object.
 func Decode(r io.Reader) (*Exif, error) {
 	sec, err := newAppSec(0xE1, r)
 	if err != nil {
@@ -98,26 +100,25 @@ func (x *Exif) loadSubDir(r *bytes.Reader, tagId uint16) error {
 	return nil
 }
 
-// Get retrieves the exif tag for the given field name. It returns nil if the
-// tag name is not found.
-func (x *Exif) Get(name string) (*tiff.Tag, error) {
+// Get retrieves the EXIF tag for the given field name.
+//
+// If the tag is not known or not present, an error is returned. If the
+// tag name is known, the error will be a TagNotPresentError.
+func (x *Exif) Get(name FieldName) (*tiff.Tag, error) {
 	id, ok := fields[name]
 	if !ok {
-		msg := fmt.Sprintf("exif: invalid tag name '%v'", name)
-		return nil, errors.New(msg)
+		return nil, fmt.Errorf("exif: invalid tag name %q", name)
 	}
-
 	if tg, ok := x.main[id]; ok {
 		return tg, nil
 	}
-
-	return nil, tagNotPresentErr(name)
+	return nil, TagNotPresentError(name)
 }
 
 // Walker is the interface used to traverse all exif fields of an Exif object.
 // Returning a non-nil error aborts the walk/traversal.
 type Walker interface {
-	Walk(name string, tag *tiff.Tag) error
+	Walk(name FieldName, tag *tiff.Tag) error
 }
 
 // Walk calls the Walk method of w with the name and tag for every non-nil exif
@@ -125,7 +126,7 @@ type Walker interface {
 func (x *Exif) Walk(w Walker) error {
 	for name, _ := range fields {
 		tag, err := x.Get(name)
-		if IsTagNotPresentErr(err) {
+		if isTagNotPresentErr(err) {
 			continue
 		} else if err != nil {
 			panic("field list access/construction is broken - this should never happen")
@@ -141,13 +142,13 @@ func (x *Exif) Walk(w Walker) error {
 
 // String returns a pretty text representation of the decoded exif data.
 func (x *Exif) String() string {
-	msg := ""
+	var buf bytes.Buffer
 	for name, id := range fields {
 		if tag, ok := x.main[id]; ok {
-			msg += name + ":" + tag.String() + "\n"
+			fmt.Fprintf(&buf, "%s: %s\n", name, tag)
 		}
 	}
-	return msg
+	return buf.String()
 }
 
 func (x Exif) MarshalJSON() ([]byte, error) {
@@ -155,7 +156,7 @@ func (x Exif) MarshalJSON() ([]byte, error) {
 
 	for name, id := range fields {
 		if tag, ok := x.main[id]; ok {
-			m[name] = tag
+			m[string(name)] = tag
 		}
 	}
 

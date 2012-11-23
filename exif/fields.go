@@ -1,6 +1,14 @@
 package exif
 
-var fields = map[string]uint16{
+type FieldName string
+
+const (
+	ImageWidth  FieldName = "ImageWidth"
+	ImageLength FieldName = "ImageLength" // height
+	Orientation FieldName = "Orientation"
+)
+
+var fields = map[FieldName]uint16{
 	/////////////////////////////////////
 	////////// IFD 0 ////////////////////
 	/////////////////////////////////////
