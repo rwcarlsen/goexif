@@ -1,9 +1,10 @@
 package exif
 
 import (
-	"github.com/rwcarlsen/goexif/tiff"
 	"os"
 	"testing"
+
+	"github.com/rwcarlsen/goexif/tiff"
 )
 
 func TestDecode(t *testing.T) {
@@ -15,10 +16,10 @@ func TestDecode(t *testing.T) {
 
 	x, err := Decode(f)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if x == nil {
-		t.Fatal("bad err")
+		t.Fatal("No error and yet %v was not decoded\n", name)
 	}
 
 	val, err := x.Get("Model")
@@ -30,7 +31,7 @@ type walker struct {
 	t *testing.T
 }
 
-func (w *walker) Walk(name string, tag *tiff.Tag) error {
+func (w *walker) Walk(name FieldName, tag *tiff.Tag) error {
 	w.t.Logf("%v: %v", name, tag)
 	return nil
 }

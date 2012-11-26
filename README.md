@@ -24,10 +24,11 @@ Example usage:
 package main
 
 import (
-  "github.com/rwcarlsen/goexif/exif"
   "os"
   "log"
   "fmt"
+
+  "github.com/rwcarlsen/goexif/exif"
 )
 
 func main() {
@@ -39,6 +40,7 @@ func main() {
   }
 
   x, err := exif.Decode(f)
+  f.Close()
   if err != nil {
     log.Fatal(err)
   }
