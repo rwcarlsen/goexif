@@ -3,13 +3,13 @@
 package exif
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	"github.com/rwcarlsen/goexif/tiff"
 )
@@ -170,7 +170,11 @@ type appSec struct {
 func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 	app := &appSec{marker: marker}
 
-	buf := bufio.NewReader(r)
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	buf := bytes.NewReader(data)
 
 	// seek to marker
 	for {
@@ -178,17 +182,22 @@ func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 		if err != nil {
 			return nil, err
 		}
-		n, err := buf.Peek(1)
-		if b == 0xFF && n[0] == marker {
-			buf.ReadByte()
+		n, err := buf.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+		if b == 0xFF && n == marker {
 			break
+		}
+
+		if err := buf.UnreadByte(); err != nil {
+			return nil, err
 		}
 	}
 
 	// read section size
 	var dataLen uint16
-	err := binary.Read(buf, binary.BigEndian, &dataLen)
-	if err != nil {
+	if err = binary.Read(buf, binary.BigEndian, &dataLen); err != nil {
 		return nil, err
 	}
 	dataLen -= 2 // subtract length of the 2 byte size marker itself
