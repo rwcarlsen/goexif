@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/rwcarlsen/goexif/tiff"
 )
@@ -170,43 +169,36 @@ type appSec struct {
 func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 	app := &appSec{marker: marker}
 
-	data, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	buf := bytes.NewReader(data)
-
+	app.data = []byte(" ")
+	var dataLen uint16
+	nread := 0
 	// seek to marker
 	for {
-		b, err := buf.ReadByte()
+		tmp := make([]byte, 1024)
+		_, err := r.Read(tmp)
 		if err != nil {
 			return nil, err
 		}
-		n, err := buf.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		if b == 0xFF && n == marker {
+		// double append keeps app.data from growing too bit while preventing misses on split FF + marker
+		app.data = append(append([]byte{}, app.data[len(app.data)-1]), tmp...)
+
+		sep := []byte{0xFF, marker}
+		if i := bytes.Index(app.data, sep); i != -1 {
+			tmp := make([]byte, 2)
+			if n, err := r.Read(tmp); err == nil && n == 2 {
+				app.data = append(app.data, tmp...)
+			}
+			app.data = app.data[i+len(sep):]
+			dataLen = binary.BigEndian.Uint16(app.data[:2]) - uint16(len(app.data))
 			break
 		}
-
-		if err := buf.UnreadByte(); err != nil {
-			return nil, err
-		}
 	}
-
-	// read section size
-	var dataLen uint16
-	if err = binary.Read(buf, binary.BigEndian, &dataLen); err != nil {
-		return nil, err
-	}
-	dataLen -= 2 // subtract length of the 2 byte size marker itself
+	app.data = app.data[2:]
 
 	// read section data
-	nread := 0
 	for nread < int(dataLen) {
 		s := make([]byte, int(dataLen)-nread)
-		n, err := buf.Read(s)
+		n, err := r.Read(s)
 		if err != nil {
 			return nil, err
 		}
@@ -225,13 +217,13 @@ func (app *appSec) reader() *bytes.Reader {
 // exifReader returns a reader on this appSec with the read cursor advanced to
 // the start of the exif's tiff encoded portion.
 func (app *appSec) exifReader() (*bytes.Reader, error) {
-	// read/check for exif special mark
 	if len(app.data) < 6 {
 		return nil, errors.New("exif: failed to find exif intro marker")
 	}
 
+	// read/check for exif special mark
 	exif := app.data[:6]
-	if string(exif) != "Exif"+string([]byte{0x00, 0x00}) {
+	if !bytes.Equal(exif, append([]byte("Exif"), 0x00, 0x00)) {
 		return nil, errors.New("exif: failed to find exif intro marker")
 	}
 	return bytes.NewReader(app.data[6:]), nil
