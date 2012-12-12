@@ -94,7 +94,7 @@ func Decode(r io.Reader) (*Exif, error) {
 	return x, nil
 }
 
-func (x *Exif) loadSubDir(r *bytes.Reader, ptrName  FieldName, fieldMap map[uint16]FieldName) error {
+func (x *Exif) loadSubDir(r *bytes.Reader, ptrName FieldName, fieldMap map[uint16]FieldName) error {
 	tag, ok := x.main[ptrName]
 	if !ok {
 		return nil

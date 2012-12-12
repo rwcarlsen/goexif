@@ -1,11 +1,10 @@
-
 package main
 
 import (
-	"os"
+	"flag"
 	"fmt"
 	"log"
-	"flag"
+	"os"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/tiff"
@@ -33,7 +32,7 @@ func main() {
 	}
 }
 
-type Walker struct {}
+type Walker struct{}
 
 func (_ Walker) Walk(name exif.FieldName, tag *tiff.Tag) error {
 	data, _ := tag.MarshalJSON()

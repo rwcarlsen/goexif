@@ -37,7 +37,7 @@ var fmtSize = map[uint16]uint32{
 	12: 8,
 }
 
-// Tag reflects the parsed content of a tiff IFD tag. 
+// Tag reflects the parsed content of a tiff IFD tag.
 type Tag struct {
 	// Id is the 2-byte tiff tag identifier
 	Id uint16
