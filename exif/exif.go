@@ -167,17 +167,22 @@ type appSec struct {
 // newAppSec finds marker in r and returns the corresponding application data
 // section.
 func newAppSec(marker byte, r io.Reader) (*appSec, error) {
+	buffSize := 1024
 	app := &appSec{marker: marker}
 
 	app.data = []byte(" ")
 	var dataLen uint16
 	nread := 0
+	tinypic := false
 	// seek to marker
 	for {
-		tmp := make([]byte, 1024)
-		_, err := r.Read(tmp)
+		tmp := make([]byte, buffSize)
+		n, err := r.Read(tmp)
 		if err != nil {
 			return nil, err
+		}
+		if n < buffSize {
+			tinypic = true
 		}
 		// double append keeps app.data from growing too bit while preventing misses on split FF + marker
 		app.data = append(append([]byte{}, app.data[len(app.data)-1]), tmp...)
@@ -189,11 +194,14 @@ func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 				app.data = append(app.data, tmp...)
 			}
 			app.data = app.data[i+len(sep):]
-			dataLen = binary.BigEndian.Uint16(app.data[:2]) - uint16(len(app.data))
+			dataLen = binary.BigEndian.Uint16(app.data[:2]) - uint16(len(sep))
 			break
 		}
 	}
 	app.data = app.data[2:]
+	if tinypic {
+		return app, nil
+	}
 
 	// read section data
 	for nread < int(dataLen) {
