@@ -166,17 +166,20 @@ type appSec struct {
 
 // newAppSec finds marker in r and returns the corresponding application data
 // section.
-func newAppSec(marker byte, r io.Reader) (*appSec, error) {
-	app := &appSec{marker: marker}
+func newAppSec(marker byte, r io.Reader) (app *appSec, err error) {
+	buffSize := 1024
+	app = &appSec{marker: marker}
 
 	app.data = []byte(" ")
 	var dataLen uint16
-	nread := 0
+	var n int
 	// seek to marker
-	for {
-		tmp := make([]byte, 1024)
-		_, err := r.Read(tmp)
-		if err != nil {
+	for err != io.EOF {
+		tmp := make([]byte, buffSize)
+		n, err = r.Read(tmp)
+		if err == io.EOF {
+			tmp = tmp[:n]
+		} else if err != nil {
 			return nil, err
 		}
 		// double append keeps app.data from growing too bit while preventing misses on split FF + marker
@@ -185,8 +188,10 @@ func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 		sep := []byte{0xFF, marker}
 		if i := bytes.Index(app.data, sep); i != -1 {
 			tmp := make([]byte, 2)
-			if n, err := r.Read(tmp); err == nil && n == 2 {
+			if n, err = r.Read(tmp); err == nil && n == 2 {
 				app.data = append(app.data, tmp...)
+			} else { // No tag following 0xFF marker
+				return nil, err
 			}
 			app.data = app.data[i+len(sep):]
 			dataLen = binary.BigEndian.Uint16(app.data[:2]) - uint16(len(app.data))
@@ -194,15 +199,17 @@ func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 		}
 	}
 	app.data = app.data[2:]
+	nread := len(app.data)
 
 	// read section data
 	for nread < int(dataLen) {
 		s := make([]byte, int(dataLen)-nread)
-		n, err := r.Read(s)
-		if err != nil {
+		n, err = r.Read(s)
+
+		nread += n
+		if err != nil && nread < int(dataLen) {
 			return nil, err
 		}
-		nread += n
 		app.data = append(app.data, s...)
 	}
 
