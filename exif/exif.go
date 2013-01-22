@@ -182,24 +182,26 @@ func newAppSec(marker byte, r io.Reader) (app *appSec, err error) {
 		} else if err != nil {
 			return nil, err
 		}
-		// double append keeps app.data from growing too bit while preventing misses on split FF + marker
+		// double append keeps app.data from growing too big while preventing misses on split FF + marker
 		app.data = append(append([]byte{}, app.data[len(app.data)-1]), tmp...)
 
 		sep := []byte{0xFF, marker}
 		if i := bytes.Index(app.data, sep); i != -1 {
-			tmp := make([]byte, 2)
-			if n, err = r.Read(tmp); err == nil && n == 2 {
-				app.data = append(app.data, tmp...)
-			} else { // No tag following 0xFF marker
-				return nil, err
+			if i+2 >= len(app.data) {
+				tmp := make([]byte, 2)
+				if n, err = r.Read(tmp); err == nil && n == 2 {
+					app.data = append(app.data, tmp...)
+				} else { // No tag following 0xFF marker before EOF
+					return nil, err
+				}
 			}
 			app.data = app.data[i+len(sep):]
-			dataLen = binary.BigEndian.Uint16(app.data[:2]) - uint16(len(app.data))
+			dataLen = binary.BigEndian.Uint16(app.data[:2])
 			break
 		}
 	}
-	app.data = app.data[2:]
 	nread := len(app.data)
+	app.data = app.data[2:]
 
 	// read section data
 	for nread < int(dataLen) {
