@@ -198,8 +198,11 @@ func newAppSec(marker byte, r io.Reader) (app *appSec, err error) {
 			app.data = app.data[i+len(sep):]
 			dataLen = binary.BigEndian.Uint16(app.data[:2])
 			break
+		} else if err == io.EOF {
+			return nil, err
 		}
 	}
+
 	nread := len(app.data)
 	app.data = app.data[2:]
 
