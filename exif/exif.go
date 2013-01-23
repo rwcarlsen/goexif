@@ -176,12 +176,15 @@ func newAppSec(marker byte, r io.Reader) (app *appSec, err error) {
 	// seek to marker
 	for err != io.EOF {
 		tmp := make([]byte, buffSize)
-		n, err = r.Read(tmp)
-		if err == io.EOF {
+		if n, err = r.Read(tmp); err == io.EOF {
+			if n <= 0 {
+				return nil, err
+			}
 			tmp = tmp[:n]
 		} else if err != nil {
 			return nil, err
 		}
+
 		// double append keeps app.data from growing too big while preventing misses on split FF + marker
 		app.data = append(append([]byte{}, app.data[len(app.data)-1]), tmp...)
 
@@ -198,8 +201,6 @@ func newAppSec(marker byte, r io.Reader) (app *appSec, err error) {
 			app.data = app.data[i+len(sep):]
 			dataLen = binary.BigEndian.Uint16(app.data[:2])
 			break
-		} else if err == io.EOF {
-			return nil, err
 		}
 	}
 
