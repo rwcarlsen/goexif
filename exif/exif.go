@@ -3,13 +3,13 @@
 package exif
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"bufio"
 
 	"github.com/rwcarlsen/goexif/tiff"
 )
@@ -173,7 +173,7 @@ func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 	var dataLen uint16
 
 	// seek to marker
-	for dataLen == 0{
+	for dataLen == 0 {
 		if _, err := br.ReadBytes(0xFF); err != nil {
 			return nil, err
 		}
