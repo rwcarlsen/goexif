@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"bufio"
 
 	"github.com/rwcarlsen/goexif/tiff"
 )
@@ -166,59 +167,42 @@ type appSec struct {
 
 // newAppSec finds marker in r and returns the corresponding application data
 // section.
-func newAppSec(marker byte, r io.Reader) (app *appSec, err error) {
-	buffSize := 1024
-	app = &appSec{marker: marker}
-
-	app.data = []byte(" ")
+func newAppSec(marker byte, r io.Reader) (*appSec, error) {
+	br := bufio.NewReader(r)
+	app := &appSec{marker: marker}
 	var dataLen uint16
-	var n int
+
 	// seek to marker
-	for err != io.EOF {
-		tmp := make([]byte, buffSize)
-		if n, err = r.Read(tmp); err == io.EOF {
-			if n <= 0 {
-				return nil, err
-			}
-			tmp = tmp[:n]
-		} else if err != nil {
+	for dataLen == 0{
+		if _, err := br.ReadBytes(0xFF); err != nil {
 			return nil, err
 		}
-
-		// double append keeps app.data from growing too big while preventing misses on split FF + marker
-		app.data = append(append([]byte{}, app.data[len(app.data)-1]), tmp...)
-
-		sep := []byte{0xFF, marker}
-		if i := bytes.Index(app.data, sep); i != -1 {
-			if i+2 >= len(app.data) {
-				tmp := make([]byte, 2)
-				if n, err = r.Read(tmp); err == nil && n == 2 {
-					app.data = append(app.data, tmp...)
-				} else { // No tag following 0xFF marker before EOF
-					return nil, err
-				}
-			}
-			app.data = app.data[i+len(sep):]
-			dataLen = binary.BigEndian.Uint16(app.data[:2])
-			break
+		c, err := br.ReadByte()
+		if err != nil {
+			return nil, err
+		} else if c != marker {
+			continue
 		}
+
+		dataLenBytes, err := br.Peek(2)
+		if err != nil {
+			return nil, err
+		}
+		dataLen = binary.BigEndian.Uint16(dataLenBytes)
 	}
 
-	nread := len(app.data)
-	app.data = app.data[2:]
-
 	// read section data
+	nread := 0
 	for nread < int(dataLen) {
 		s := make([]byte, int(dataLen)-nread)
-		n, err = r.Read(s)
-
+		n, err := br.Read(s)
 		nread += n
 		if err != nil && nread < int(dataLen) {
 			return nil, err
 		}
-		app.data = append(app.data, s...)
+		app.data = append(app.data, s[:n]...)
 	}
-
+	app.data = app.data[2:] // exclude dataLenBytes
 	return app, nil
 }
 
