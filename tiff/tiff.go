@@ -1,4 +1,5 @@
-// Package tiff implements TIFF decoding as defined in TIFF 6.0 specification.
+// Package tiff implements TIFF decoding as defined in TIFF 6.0 specification at
+// http://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
 package tiff
 
 import (
@@ -55,7 +56,7 @@ func Decode(r io.Reader) (*Tiff, error) {
 	// check for special tiff marker
 	var sp int16
 	err = binary.Read(buf, t.Order, &sp)
-	if err != nil || 0x002A != sp {
+	if err != nil || 42 != sp {
 		return nil, errors.New("tiff: could not find special tiff marker")
 	}
 

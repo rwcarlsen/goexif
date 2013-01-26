@@ -17,10 +17,10 @@ type input struct {
 }
 
 type output struct {
-	id     uint16
-	format uint16
-	count  uint32
-	val    []byte
+	id    uint16
+	typ   uint16
+	count uint32
+	val   []byte
 }
 
 type tagTest struct {
@@ -151,11 +151,11 @@ func testSingle(t *testing.T, order binary.ByteOrder, in input, out output, i in
 	if tg.Id != out.id {
 		t.Errorf("(%v) tag %v id decode: expected %v, got %v", order, i, out.id, tg.Id)
 	}
-	if tg.Fmt != out.format {
-		t.Errorf("(%v) tag %v format decode: expected %v, got %v", order, i, out.format, tg.Fmt)
+	if tg.Type != out.typ {
+		t.Errorf("(%v) tag %v type decode: expected %v, got %v", order, i, out.typ, tg.Type)
 	}
-	if tg.Ncomp != out.count {
-		t.Errorf("(%v) tag %v N-components decode: expected %v, got %v", order, i, out.count, tg.Ncomp)
+	if tg.Count != out.count {
+		t.Errorf("(%v) tag %v component count decode: expected %v, got %v", order, i, out.count, tg.Count)
 	}
 	if !bytes.Equal(tg.Val, out.val) {
 		t.Errorf("(%v) tag %v value decode: expected %v, got %v", order, i, out.val, tg.Val)
