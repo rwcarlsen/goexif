@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"strings"
 	"unicode"
@@ -60,7 +61,7 @@ type Tag struct {
 	strVal    string
 }
 
-// DecodeTag parses a tiff-encoded IFD tag from r and returns Tag object. The
+// DecodeTag parses a tiff-encoded IFD tag from r and returns a Tag object. The
 // first read from r should be the first byte of the tag. ReadAt offsets should
 // be relative to the beginning of the tiff structure (not relative to the
 // beginning of the tag).
@@ -94,13 +95,11 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 		}
 	} else {
 		val := make([]byte, valLen)
-		n, err := r.Read(val)
-		if err != nil || n != int(valLen) {
+		if _, err = io.ReadFull(r, val); err != nil {
 			return nil, errors.New("tiff: tag offset read failed: " + err.Error())
 		}
-
-		n, err = r.Read(make([]byte, 4-valLen))
-		if err != nil || n != 4-int(valLen) {
+		// ignore padding.
+		if _, err = io.ReadFull(r, make([]byte, 4-valLen)); err != nil {
 			return nil, errors.New("tiff: tag offset read failed: " + err.Error())
 		}
 
@@ -117,7 +116,7 @@ func (t *Tag) convertVals() {
 
 	switch t.Type {
 	case 2: // ascii string
-		t.strVal = string(t.Val[:len(t.Val)-1])
+		t.strVal = string(t.Val[:len(t.Val)-1]) // ignore the last byte (NULL).
 	case 1:
 		var v uint8
 		t.intVals = make([]int64, int(t.Count))

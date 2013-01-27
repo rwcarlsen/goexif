@@ -56,6 +56,7 @@ type Exif struct {
 
 // Decode parses EXIF-encoded data from r and returns a queryable Exif object.
 func Decode(r io.Reader) (*Exif, error) {
+	// Locate the EXIF (0xE1 = APP1) application section.
 	sec, err := newAppSec(0xE1, r)
 	if err != nil {
 		return nil, err
@@ -170,7 +171,7 @@ type appSec struct {
 func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 	br := bufio.NewReader(r)
 	app := &appSec{marker: marker}
-	var dataLen uint16
+	var dataLen int
 
 	// seek to marker
 	for dataLen == 0 {
@@ -188,16 +189,16 @@ func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 		if err != nil {
 			return nil, err
 		}
-		dataLen = binary.BigEndian.Uint16(dataLenBytes)
+		dataLen = int(binary.BigEndian.Uint16(dataLenBytes))
 	}
 
 	// read section data
 	nread := 0
-	for nread < int(dataLen) {
-		s := make([]byte, int(dataLen)-nread)
+	for nread < dataLen {
+		s := make([]byte, dataLen-nread)
 		n, err := br.Read(s)
 		nread += n
-		if err != nil && nread < int(dataLen) {
+		if err != nil && nread < dataLen {
 			return nil, err
 		}
 		app.data = append(app.data, s[:n]...)
