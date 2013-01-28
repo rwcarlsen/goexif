@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 )
@@ -40,17 +41,15 @@ func Decode(r io.Reader) (*Tiff, error) {
 
 	// read byte order
 	bo := make([]byte, 2)
-	n, err := buf.Read(bo)
-	if n < len(bo) || err != nil {
+	if _, err = io.ReadFull(buf, bo); err != nil {
 		return nil, errors.New("tiff: could not read tiff byte order")
+	}
+	if string(bo) == "II" {
+		t.Order = binary.LittleEndian
+	} else if string(bo) == "MM" {
+		t.Order = binary.BigEndian
 	} else {
-		if string(bo) == "II" {
-			t.Order = binary.LittleEndian
-		} else if string(bo) == "MM" {
-			t.Order = binary.BigEndian
-		} else {
-			return nil, errors.New("tiff: could not read tiff byte order")
-		}
+		return nil, errors.New("tiff: could not read tiff byte order")
 	}
 
 	// check for special tiff marker
@@ -92,11 +91,13 @@ func Decode(r io.Reader) (*Tiff, error) {
 }
 
 func (tf *Tiff) String() string {
-	s := "Tiff{"
+	var buf bytes.Buffer
+	fmt.Fprint(&buf, "Tiff{")
 	for _, d := range tf.Dirs {
-		s += d.String() + ", "
+		fmt.Fprintf(&buf, "%s, ", d.String())
 	}
-	return s + "}"
+	fmt.Fprintf(&buf, "}")
+	return buf.String()
 }
 
 // Dir reflects the parsed content of a tiff Image File Directory (IFD).
