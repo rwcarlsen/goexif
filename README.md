@@ -4,7 +4,7 @@ goexif
 Provides decoding of basic exif and tiff encoded data. Still in alpha - no guarantees.
 Suggestions and pull requests are welcome.  Functionality is split into two packages - "exif" and "tiff"
 The exif package depends on the tiff package. 
-Documentation can be found at http://go.pkgdoc.org/github.com/rwcarlsen/goexif
+Documentation can be found at http://godoc.org/github.com/rwcarlsen/goexif
 
 
 Like goexif? - <a class="coinbase-button" data-code="8bf22bf038edef1f8f1675c7f3ff8a4c" data-button-style="buy_now_small" href="https://coinbase.com/checkouts/8bf22bf038edef1f8f1675c7f3ff8a4c">Tip me with Bitcoin</a>
