@@ -1,4 +1,3 @@
-
 // Package exif implements decoding of EXIF data as defined in the EXIF 2.2
 // specification.
 package exif
