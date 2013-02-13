@@ -1,3 +1,4 @@
+
 // Package exif implements decoding of EXIF data as defined in the EXIF 2.2
 // specification.
 package exif
@@ -83,13 +84,13 @@ func Decode(r io.Reader) (*Exif, error) {
 	}
 
 	// recurse into exif, gps, and interop sub-IFDs
-	if err = x.loadSubDir(er, exifIFDPointer, exifFields); err != nil {
+	if err = x.loadSubDir(er, ExifIFDPointer, exifFields); err != nil {
 		return x, err
 	}
-	if err = x.loadSubDir(er, gpsInfoIFDPointer, gpsFields); err != nil {
+	if err = x.loadSubDir(er, GPSInfoIFDPointer, gpsFields); err != nil {
 		return x, err
 	}
-	if err = x.loadSubDir(er, interoperabilityIFDPointer, interopFields); err != nil {
+	if err = x.loadSubDir(er, InteroperabilityIFDPointer, interopFields); err != nil {
 		return x, err
 	}
 

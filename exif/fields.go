@@ -1,17 +1,129 @@
+
 package exif
 
 type FieldName string
 
+// Primary EXIF fields
 const (
-	ImageWidth  FieldName = "ImageWidth"
-	ImageLength FieldName = "ImageLength" // height
-	Orientation FieldName = "Orientation"
+	ImageWidth              FieldName = "ImageWidth"
+	ImageLength              = "ImageLength" // height
+	BitsPerSample            = "BitsPerSample"
+	Compression              = "Compression"
+	PhotometricInterpretation = "PhotometricInterpretation"
+	Orientation              = "Orientation"
+	SamplesPerPixel          = "SamplesPerPixel"
+	PlanarConfiguration      = "PlanarConfiguration"
+	YCbCrSubSampling         = "YCbCrSubSampling"
+	YCbCrPositioning         = "YCbCrPositioning"
+	XResolution              = "XResolution"
+	YResolution              = "YResolution"
+	ResolutionUnit           = "ResolutionUnit"
+	DateTime                 = "DateTime"
+	ImageDescription         = "ImageDescription"
+	Make                     = "Make"
+	Model                    = "Model"
+	Software                 = "Software"
+	Artist                   = "Artist"
+	Copyright                = "Copyright"
+	ExifIFDPointer = "ExifIFDPointer"
+	GPSInfoIFDPointer = "GPSInfoIFDPointer"
+	InteroperabilityIFDPointer = "InteroperabilityIFDPointer"
+	ExifVersion             = "ExifVersion"
+	FlashpixVersion         = "FlashpixVersion"
+	ColorSpace              = "ColorSpace"
+	ComponentsConfiguration = "ComponentsConfiguration"
+	CompressedBitsPerPixel  = "CompressedBitsPerPixel"
+	PixelXDimension         = "PixelXDimension"
+	PixelYDimension         = "PixelYDimension"
+	MakerNote               = "MakerNote"
+	UserComment             = "UserComment"
+	RelatedSoundFile        = "RelatedSoundFile"
+	DateTimeOriginal        = "DateTimeOriginal"
+	DateTimeDigitized       = "DateTimeDigitized"
+	SubSecTime              = "SubSecTime"
+	SubSecTimeOriginal      = "SubSecTimeOriginal"
+	SubSecTimeDigitized     = "SubSecTimeDigitized"
+	ImageUniqueID           = "ImageUniqueID"
+	ExposureTime            = "ExposureTime"
+	FNumber                 = "FNumber"
+	ExposureProgram         = "ExposureProgram"
+	SpectralSensitivity     = "SpectralSensitivity"
+	ISOSpeedRatings         = "ISOSpeedRatings"
+	OECF                    = "OECF"
+	ShutterSpeedValue       = "ShutterSpeedValue"
+	ApertureValue           = "ApertureValue"
+	BrightnessValue         = "BrightnessValue"
+	ExposureBiasValue       = "ExposureBiasValue"
+	MaxApertureValue        = "MaxApertureValue"
+	SubjectDistance         = "SubjectDistance"
+	MeteringMode            = "MeteringMode"
+	LightSource             = "LightSource"
+	Flash                   = "Flash"
+	FocalLength             = "FocalLength"
+	SubjectArea             = "SubjectArea"
+	FlashEnergy             = "FlashEnergy"
+	SpatialFrequencyResponse = "SpatialFrequencyResponse"
+	FocalPlaneXResolution   = "FocalPlaneXResolution"
+	FocalPlaneYResolution   = "FocalPlaneYResolution"
+	FocalPlaneResolutionUnit = "FocalPlaneResolutionUnit"
+	SubjectLocation         = "SubjectLocation"
+	ExposureIndex           = "ExposureIndex"
+	SensingMethod           = "SensingMethod"
+	FileSource              = "FileSource"
+	SceneType               = "SceneType"
+	CFAPattern              = "CFAPattern"
+	CustomRendered          = "CustomRendered"
+	ExposureMode            = "ExposureMode"
+	WhiteBalance            = "WhiteBalance"
+	DigitalZoomRatio        = "DigitalZoomRatio"
+	FocalLengthIn35mmFilm   = "FocalLengthIn35mmFilm"
+	SceneCaptureType        = "SceneCaptureType"
+	GainControl             = "GainControl"
+	Contrast                = "Contrast"
+	Saturation              = "Saturation"
+	Sharpness               = "Sharpness"
+	DeviceSettingDescription = "DeviceSettingDescription"
+	SubjectDistanceRange    = "SubjectDistanceRange"
 )
 
+// GPS fields
 const (
-	exifIFDPointer             FieldName = "ExifIFDPointer"
-	gpsInfoIFDPointer                    = "GPSInfoIFDPointer"
-	interoperabilityIFDPointer           = "InteroperabilityIFDPointer"
+	GPSVersionID      FieldName = "GPSVersionID"
+	GPSLatitudeRef     = "GPSLatitudeRef"
+	GPSLatitude        = "GPSLatitude"
+	GPSLongitudeRef    = "GPSLongitudeRef"
+	GPSLongitude       = "GPSLongitude"
+	GPSAltitudeRef     = "GPSAltitudeRef"
+	GPSAltitude        = "GPSAltitude"
+	GPSTimeStamp       = "GPSTimeStamp"
+	GPSSatelites       = "GPSSatelites"
+	GPSStatus          = "GPSStatus"
+	GPSMeasureMode     = "GPSMeasureMode"
+	GPSDOP             = "GPSDOP"
+	GPSSpeedRef        = "GPSSpeedRef"
+	GPSSpeed           = "GPSSpeed"
+	GPSTrackRef        = "GPSTrackRef"
+	GPSTrack           = "GPSTrack"
+	GPSImgDirectionRef = "GPSImgDirectionRef"
+	GPSImgDirection    = "GPSImgDirection"
+	GPSMapDatum        = "GPSMapDatum"
+	GPSDestLatitudeRef = "GPSDestLatitudeRef"
+	GPSDestLatitude    = "GPSDestLatitude"
+	GPSDestLongitudeRef = "GPSDestLongitudeRef"
+	GPSDestLongitude   = "GPSDestLongitude"
+	GPSDestBearingRef  = "GPSDestBearingRef"
+	GPSDestBearing     = "GPSDestBearing"
+	GPSDestDistanceRef = "GPSDestDistanceRef"
+	GPSDestDistance    = "GPSDestDistance"
+	GPSProcessingMethod = "GPSProcessingMethod"
+	GPSAreaInformation = "GPSAreaInformation"
+	GPSDateStamp       = "GPSDateStamp"
+	GPSDifferential    = "GPSDifferential"
+)
+
+// interoperability fields
+const (
+	InteroperabilityIndex FieldName = "InteroperabilityIndex"
 )
 
 var exifFields = map[uint16]FieldName{
@@ -44,14 +156,14 @@ var exifFields = map[uint16]FieldName{
 	0x8298: "Copyright",
 
 	// private tags
-	exifPointer: "ExifIFDPointer",
+	exifPointer: ExifIFDPointer,
 
 	/////////////////////////////////////
 	////////// Exif sub IFD /////////////
 	/////////////////////////////////////
 
-	gpsPointer:     "GPSInfoIFDPointer",
-	interopPointer: "InteroperabilityIFDPointer",
+	gpsPointer:     GPSInfoIFDPointer,
+	interopPointer: InteroperabilityIFDPointer,
 
 	0x9000: "ExifVersion",
 	0xA000: "FlashpixVersion",
@@ -161,3 +273,4 @@ var interopFields = map[uint16]FieldName{
 	/////////////////////////////////////
 	0x1: "InteroperabilityIndex",
 }
+
