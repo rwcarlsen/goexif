@@ -17,7 +17,7 @@ type ReadAtReader interface {
 	io.ReaderAt
 }
 
-// Tiff provides access to decoded tiff data.
+// Tiff provides access to a decoded tiff data structure.
 type Tiff struct {
 	// Dirs is an ordered slice of the tiff's Image File Directories (IFDs).
 	// The IFD at index 0 is IFD0.
@@ -26,10 +26,10 @@ type Tiff struct {
 	Order binary.ByteOrder
 }
 
-// Decode parses tiff-encoded data from r and returns a Tiff that reflects the
-// structure and content of the tiff data. The first read from r should be the
-// first byte of the tiff-encoded data (not necessarily the first byte of an
-// os.File object).
+// Decode parses tiff-encoded data from r and returns a Tiff struct that
+// reflects the structure and content of the tiff data. The first read from r
+// should be the first byte of the tiff-encoded data and not necessarily the
+// first byte of an os.File object.
 func Decode(r io.Reader) (*Tiff, error) {
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -100,7 +100,7 @@ func (tf *Tiff) String() string {
 	return buf.String()
 }
 
-// Dir reflects the parsed content of a tiff Image File Directory (IFD).
+// Dir provides access to the parsed content of a tiff Image File Directory (IFD).
 type Dir struct {
 	Tags []*Tag
 }

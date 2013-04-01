@@ -48,9 +48,9 @@ func isTagNotPresentErr(err error) bool {
 	return ok
 }
 
+// Exif provides access to decoded EXIF metadata fields and values.
 type Exif struct {
-	tif *tiff.Tiff
-
+	tif  *tiff.Tiff
 	main map[FieldName]*tiff.Tag
 }
 
@@ -131,14 +131,15 @@ func (x *Exif) Get(name FieldName) (*tiff.Tag, error) {
 	return nil, TagNotPresentError(name)
 }
 
-// Walker is the interface used to traverse all exif fields of an Exif object.
-// Returning a non-nil error aborts the walk/traversal.
+// Walker is the interface used to traverse all fields of an Exif object.
 type Walker interface {
+	// Walk is called for each non-nil EXIF field. Returning a non-nil
+	// error aborts the walk/traversal.
 	Walk(name FieldName, tag *tiff.Tag) error
 }
 
-// Walk calls the Walk method of w with the name and tag for every non-nil exif
-// field.
+// Walk calls the Walk method of w with the name and tag for every non-nil
+// EXIF field.  If w aborts the walk with an error, that error is returned.
 func (x *Exif) Walk(w Walker) error {
 	for name, tag := range x.main {
 		if err := w.Walk(name, tag); err != nil {
@@ -157,6 +158,8 @@ func (x *Exif) String() string {
 	return buf.String()
 }
 
+// MarshalJson implements the encoding/json.Marshaler interface providing output of
+// all EXIF fields present (names and values).
 func (x Exif) MarshalJSON() ([]byte, error) {
 	return json.Marshal(x.main)
 }
