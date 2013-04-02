@@ -79,6 +79,9 @@ func Decode(r io.Reader) (*Exif, error) {
 	ifd0 := tif.Dirs[0]
 	for _, tag := range ifd0.Tags {
 		name := exifFields[tag.Id]
+		if name == "" {
+			name = FieldName(fmt.Sprintf("%v%x", unknownPrefix, tag.Id))
+		}
 		x.main[name] = tag
 	}
 
@@ -113,6 +116,9 @@ func (x *Exif) loadSubDir(r *bytes.Reader, ptrName FieldName, fieldMap map[uint1
 	}
 	for _, tag := range subDir.Tags {
 		name := fieldMap[tag.Id]
+		if name == "" {
+			name = FieldName(fmt.Sprintf("%v%x", unknownPrefix, tag.Id))
+		}
 		x.main[name] = tag
 	}
 	return nil

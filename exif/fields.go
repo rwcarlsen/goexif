@@ -2,6 +2,10 @@ package exif
 
 type FieldName string
 
+// unknownPrefix is used as the first part of field names for decoded tags for
+// which there is no known/supported EXIF field
+const unknownPrefix = "UnknownTag_"
+
 // Primary EXIF fields
 const (
 	ImageWidth                 FieldName = "ImageWidth"
