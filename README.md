@@ -6,9 +6,7 @@ Suggestions and pull requests are welcome.  Functionality is split into two pack
 The exif package depends on the tiff package. 
 Documentation can be found at http://godoc.org/github.com/rwcarlsen/goexif
 
-
-Like goexif? - <a class="coinbase-button" data-code="8bf22bf038edef1f8f1675c7f3ff8a4c" data-button-style="buy_now_small" href="https://coinbase.com/checkouts/8bf22bf038edef1f8f1675c7f3ff8a4c">Tip me with Bitcoin</a>
-<script src="https://coinbase.com/assets/button.js" type="text/javascript"></script>
+Like goexif? - Bitcoin tips welcome: 17w65FVqx196Qp7tfCCSLqyvsHUhiEEa7P
 
 To install, in a terminal type:
 
