@@ -9,7 +9,7 @@ const unknownPrefix = "UnknownTag_"
 // Primary EXIF fields
 const (
 	ImageWidth                 FieldName = "ImageWidth"
-	ImageLength                          = "ImageLength" // height
+	ImageHeight                          = "ImageHeight"
 	BitsPerSample                        = "BitsPerSample"
 	Compression                          = "Compression"
 	PhotometricInterpretation            = "PhotometricInterpretation"
@@ -134,9 +134,9 @@ var exifFields = map[uint16]FieldName{
 	////////// IFD 0 ////////////////////
 	/////////////////////////////////////
 
-	// image data structure
+	// image data structure for the thumbnail
 	0x0100: "ImageWidth",
-	0x0101: "ImageLength",
+	0x0101: "ImageHeight",
 	0x0102: "BitsPerSample",
 	0x0103: "Compression",
 	0x0106: "PhotometricInterpretation",

@@ -18,18 +18,20 @@ var validField map[FieldName]bool
 
 func init() {
 	validField = make(map[FieldName]bool)
-	for _, name := range exifFields {
-		validField[name] = true
-	}
-	for _, name := range gpsFields {
-		validField[name] = true
-	}
-	for _, name := range interopFields {
+	addValidFields(exifFields)
+	addValidFields(gpsFields)
+	addValidFields(gpsFields)
+}
+
+func addValidFields(fields map[uint16]FieldName) {
+	for _, name := range fields {
 		validField[name] = true
 	}
 }
 
 const (
+	jpeg_APP1 = 0xE1
+
 	exifPointer    = 0x8769
 	gpsPointer     = 0x8825
 	interopPointer = 0xA005
@@ -56,8 +58,8 @@ type Exif struct {
 
 // Decode parses EXIF-encoded data from r and returns a queryable Exif object.
 func Decode(r io.Reader) (*Exif, error) {
-	// Locate the EXIF (0xE1 = APP1) application section.
-	sec, err := newAppSec(0xE1, r)
+	// Locate the EXIF application section.
+	sec, err := newAppSec(jpeg_APP1, r)
 	if err != nil {
 		return nil, err
 	}
@@ -76,14 +78,7 @@ func Decode(r io.Reader) (*Exif, error) {
 		tif:  tif,
 	}
 
-	ifd0 := tif.Dirs[0]
-	for _, tag := range ifd0.Tags {
-		name := exifFields[tag.Id]
-		if name == "" {
-			name = FieldName(fmt.Sprintf("%v%x", unknownPrefix, tag.Id))
-		}
-		x.main[name] = tag
-	}
+	x.loadDirTags(tif.Dirs[0], exifFields)
 
 	// recurse into exif, gps, and interop sub-IFDs
 	if err = x.loadSubDir(er, ExifIFDPointer, exifFields); err != nil {
@@ -114,14 +109,18 @@ func (x *Exif) loadSubDir(r *bytes.Reader, ptrName FieldName, fieldMap map[uint1
 	if err != nil {
 		return errors.New("exif: sub-IFD decode failed: " + err.Error())
 	}
-	for _, tag := range subDir.Tags {
+	x.loadDirTags(subDir, fieldMap)
+	return nil
+}
+
+func (x *Exif) loadDirTags(d *tiff.Dir, fieldMap map[uint16]FieldName) {
+	for _, tag := range d.Tags {
 		name := fieldMap[tag.Id]
 		if name == "" {
 			name = FieldName(fmt.Sprintf("%v%x", unknownPrefix, tag.Id))
 		}
 		x.main[name] = tag
 	}
-	return nil
 }
 
 // Get retrieves the EXIF tag for the given field name.
