@@ -21,6 +21,8 @@ func init() {
 	addValidFields(exifFields)
 	addValidFields(gpsFields)
 	addValidFields(gpsFields)
+	addValidFields(makerNoteCanonFields)
+	addValidFields(makerNoteNikon3Fields)
 }
 
 func addValidFields(fields map[uint16]FieldName) {
@@ -91,7 +93,45 @@ func Decode(r io.Reader) (*Exif, error) {
 		return x, err
 	}
 
+	// load MakerNote fields, but don't abort if none are readable
+	x.loadMakerNotes(er)
+
 	return x, nil
+}
+
+func (x *Exif) loadMakerNotes(r *bytes.Reader) {
+	if m, err := x.Get(MakerNote); err == nil {
+		if mk, err := x.Get(Make); err == nil && mk.StringVal() == "Canon" {
+			x.loadCanonMakerNotes(r)
+		} else if bytes.Compare(m.Val[:6], []byte("Nikon\000")) == 0 {
+			x.loadNikonV3MakerNotes(m)
+		}
+	}
+}
+
+func (x *Exif) loadCanonMakerNotes(r *bytes.Reader) {
+	// Canon maker note is an IFD with absolute offsets from the start
+	// of the TIFF header
+	offset := int64(826) // XXX - need offset to Maker Note data!
+	if _, err := r.Seek(offset, 0); err != nil {
+		fmt.Printf("Failed to seek to start of TIFF header: %v\n", err)
+		return
+	}
+	if subDir, _, err := tiff.DecodeDir(r, x.tif.Order); err == nil {
+		x.loadDirTags(subDir, makerNoteCanonFields)
+	} else {
+		fmt.Printf("Error loading Canon Maker note: %v\n", err)
+	}
+}
+
+func (x *Exif) loadNikonV3MakerNotes(m *tiff.Tag) {
+	// Nikon v3 maker note is a self-contained IFD (offsets are relative
+	// to the start of the maker note)
+	mkNotes, err := tiff.Decode(bytes.NewReader(m.Val[10:]))
+	// fmt.Printf("Maker notes (err %v): %v", err, mkNotes)
+	if err == nil {
+		x.loadDirTags(mkNotes.Dirs[0], makerNoteNikon3Fields)
+	}
 }
 
 func (x *Exif) loadSubDir(r *bytes.Reader, ptrName FieldName, fieldMap map[uint16]FieldName) error {
