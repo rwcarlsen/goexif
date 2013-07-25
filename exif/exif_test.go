@@ -72,7 +72,7 @@ type regresswalk struct {
 }
 
 func (w *regresswalk) Walk(name FieldName, tag *tiff.Tag) error {
-	if strings.HasPrefix(string(name), unknownPrefix) {
+	if strings.HasPrefix(string(name), UnknownPrefix) {
 		fmt.Fprintf(w.wr, "\t\t\"%v\": `%v`,\n", name, tag.String())
 	} else {
 		fmt.Fprintf(w.wr, "\t\t%v: `%v`,\n", name, tag.String())

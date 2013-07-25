@@ -1,5 +1,5 @@
 // Package exif implements decoding of EXIF data as defined in the EXIF 2.2
-// specification.
+// specification (http://www.exif.org/Exif2-2.PDF).
 package exif
 
 import (
@@ -120,7 +120,7 @@ func (x *Exif) LoadDirTags(d *tiff.Dir, fieldMap map[uint16]FieldName) {
 	for _, tag := range d.Tags {
 		name := fieldMap[tag.Id]
 		if name == "" {
-			name = FieldName(fmt.Sprintf("%v%x", unknownPrefix, tag.Id))
+			name = FieldName(fmt.Sprintf("%v%x", UnknownPrefix, tag.Id))
 		}
 		x.main[name] = tag
 	}
