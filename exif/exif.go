@@ -15,6 +15,7 @@ import (
 )
 
 var validField map[FieldName]bool
+var parsers []FieldParser
 
 func init() {
 	validField = make(map[FieldName]bool)
@@ -27,6 +28,27 @@ func addValidFields(fields map[uint16]FieldName) {
 	for _, name := range fields {
 		validField[name] = true
 	}
+}
+
+// A FieldParser is an external module that adds the ability to parse
+// nonstandard fields that may be present in an Exif file, such as MakerNote.
+type FieldParser interface {
+	// Returns a list of all fields that the FieldParser can parse from the
+	// Exif structure.
+	HandledFields() []FieldName
+
+	// Decodes additional fields, as defined in the return value of
+	// HandledFields, returning the number of fields parsed and an error.
+	// As a side effect, it adds any parsed field values to the Exif
+	// object's field map, for later retrieval using Get.
+	Decode(x *Exif) (n int, err error)
+}
+
+func RegisterFieldParser(p FieldParser) {
+	for _, name := range p.HandledFields() {
+		validField[name] = true
+	}
+	parsers = append(parsers, p)
 }
 
 const (
@@ -52,7 +74,7 @@ func isTagNotPresentErr(err error) bool {
 
 // Exif provides access to decoded EXIF metadata fields and values.
 type Exif struct {
-	Tiff  *tiff.Tiff
+	Tiff *tiff.Tiff
 	main map[FieldName]*tiff.Tag
 }
 
@@ -75,7 +97,7 @@ func Decode(r io.Reader) (*Exif, error) {
 	// build an exif structure from the tiff
 	x := &Exif{
 		main: map[FieldName]*tiff.Tag{},
-		Tiff:  tif,
+		Tiff: tif,
 	}
 
 	x.LoadDirTags(tif.Dirs[0], exifFields)
@@ -89,6 +111,12 @@ func Decode(r io.Reader) (*Exif, error) {
 	}
 	if err = x.loadSubDir(er, InteroperabilityIFDPointer, interopFields); err != nil {
 		return x, err
+	}
+
+	for _, p := range parsers {
+		if _, err = p.Decode(x); err != nil {
+			return x, err
+		}
 	}
 
 	return x, nil

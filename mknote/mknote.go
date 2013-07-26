@@ -10,9 +10,27 @@ import (
 	"github.com/rwcarlsen/goexif/tiff"
 )
 
+func init() {
+	exif.RegisterFieldParser(impl{})
+}
+
+type impl struct{}
+
+func (impl) HandledFields() []exif.FieldName {
+	fields := make([]exif.FieldName,
+		len(makerNoteCanonFields)+len(makerNoteNikon3Fields))
+	for _, name := range makerNoteCanonFields {
+		fields = append(fields, name)
+	}
+	for _, name := range makerNoteNikon3Fields {
+		fields = append(fields, name)
+	}
+	return fields
+}
+
 // Decode decodes all makernote data found in x and adds it to x.  n is the
 // number of fields found/decoded from the makernote.
-func Decode(x *exif.Exif) (n int, err error) {
+func (impl) Decode(x *exif.Exif) (n int, err error) {
 	m, err := x.Get(exif.MakerNote)
 	if err != nil {
 		return 0, errors.New("makernote: no makernote data found")
