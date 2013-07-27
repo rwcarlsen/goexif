@@ -37,7 +37,7 @@ func isTagNotPresentErr(err error) bool {
 
 // Exif provides access to decoded EXIF metadata fields and values.
 type Exif struct {
-	Tiff  *tiff.Tiff
+	Tiff *tiff.Tiff
 	main map[FieldName]*tiff.Tag
 }
 
@@ -60,7 +60,7 @@ func Decode(r io.Reader) (*Exif, error) {
 	// build an exif structure from the tiff
 	x := &Exif{
 		main: map[FieldName]*tiff.Tag{},
-		Tiff:  tif,
+		Tiff: tif,
 	}
 
 	x.LoadDirTags(tif.Dirs[0], exifFields)
