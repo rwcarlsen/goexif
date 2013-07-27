@@ -14,21 +14,6 @@ import (
 	"github.com/rwcarlsen/goexif/tiff"
 )
 
-var validField map[FieldName]bool
-
-func init() {
-	validField = make(map[FieldName]bool)
-	addValidFields(exifFields)
-	addValidFields(gpsFields)
-	addValidFields(interopFields)
-}
-
-func addValidFields(fields map[uint16]FieldName) {
-	for _, name := range fields {
-		validField[name] = true
-	}
-}
-
 const (
 	jpeg_APP1 = 0xE1
 
@@ -131,9 +116,7 @@ func (x *Exif) LoadDirTags(d *tiff.Dir, fieldMap map[uint16]FieldName) {
 // If the tag is not known or not present, an error is returned. If the
 // tag name is known, the error will be a TagNotPresentError.
 func (x *Exif) Get(name FieldName) (*tiff.Tag, error) {
-	if !validField[name] {
-		return nil, fmt.Errorf("exif: invalid tag name %q", name)
-	} else if tg, ok := x.main[name]; ok {
+	if tg, ok := x.main[name]; ok {
 		return tg, nil
 	}
 	return nil, TagNotPresentError(name)
