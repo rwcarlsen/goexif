@@ -1,5 +1,5 @@
 // Package exif implements decoding of EXIF data as defined in the EXIF 2.2
-// specification.
+// specification (http://www.exif.org/Exif2-2.PDF).
 package exif
 
 import (
@@ -14,22 +14,25 @@ import (
 	"github.com/rwcarlsen/goexif/tiff"
 )
 
-var validField map[FieldName]bool
+var parsers []FieldParser
 
-func init() {
-	validField = make(map[FieldName]bool)
-	for _, name := range exifFields {
-		validField[name] = true
-	}
-	for _, name := range gpsFields {
-		validField[name] = true
-	}
-	for _, name := range interopFields {
-		validField[name] = true
-	}
+// A FieldParser is an external module that adds the ability to parse
+// nonstandard fields that may be present in an Exif file, such as MakerNote.
+type FieldParser interface {
+	// Decodes additional fields, as defined in the return value of
+	// HandledFields, returning the number of fields parsed and an error.
+	// As a side effect, it adds any parsed field values to the Exif
+	// object's field map, for later retrieval using Get.
+	Decode(x *Exif) (n int, err error)
+}
+
+func RegisterFieldParser(p FieldParser) {
+	parsers = append(parsers, p)
 }
 
 const (
+	jpeg_APP1 = 0xE1
+
 	exifPointer    = 0x8769
 	gpsPointer     = 0x8825
 	interopPointer = 0xA005
@@ -50,14 +53,14 @@ func isTagNotPresentErr(err error) bool {
 
 // Exif provides access to decoded EXIF metadata fields and values.
 type Exif struct {
-	tif  *tiff.Tiff
+	Tiff *tiff.Tiff
 	main map[FieldName]*tiff.Tag
 }
 
 // Decode parses EXIF-encoded data from r and returns a queryable Exif object.
 func Decode(r io.Reader) (*Exif, error) {
-	// Locate the EXIF (0xE1 = APP1) application section.
-	sec, err := newAppSec(0xE1, r)
+	// Locate the EXIF application section.
+	sec, err := newAppSec(jpeg_APP1, r)
 	if err != nil {
 		return nil, err
 	}
@@ -73,17 +76,10 @@ func Decode(r io.Reader) (*Exif, error) {
 	// build an exif structure from the tiff
 	x := &Exif{
 		main: map[FieldName]*tiff.Tag{},
-		tif:  tif,
+		Tiff: tif,
 	}
 
-	ifd0 := tif.Dirs[0]
-	for _, tag := range ifd0.Tags {
-		name := exifFields[tag.Id]
-		if name == "" {
-			name = FieldName(fmt.Sprintf("%v%x", unknownPrefix, tag.Id))
-		}
-		x.main[name] = tag
-	}
+	x.LoadDirTags(tif.Dirs[0], exifFields)
 
 	// recurse into exif, gps, and interop sub-IFDs
 	if err = x.loadSubDir(er, ExifIFDPointer, exifFields); err != nil {
@@ -94,6 +90,12 @@ func Decode(r io.Reader) (*Exif, error) {
 	}
 	if err = x.loadSubDir(er, InteroperabilityIFDPointer, interopFields); err != nil {
 		return x, err
+	}
+
+	for _, p := range parsers {
+		if _, err = p.Decode(x); err != nil {
+			return x, err
+		}
 	}
 
 	return x, nil
@@ -110,18 +112,25 @@ func (x *Exif) loadSubDir(r *bytes.Reader, ptrName FieldName, fieldMap map[uint1
 	if err != nil {
 		return errors.New("exif: seek to sub-IFD failed: " + err.Error())
 	}
-	subDir, _, err := tiff.DecodeDir(r, x.tif.Order)
+	subDir, _, err := tiff.DecodeDir(r, x.Tiff.Order)
 	if err != nil {
 		return errors.New("exif: sub-IFD decode failed: " + err.Error())
 	}
-	for _, tag := range subDir.Tags {
+	x.LoadDirTags(subDir, fieldMap)
+	return nil
+}
+
+// LoadDirTags loads tags into the available fields from the tiff Directory
+// using the given tagid-fieldname mapping.  Used to load makernote and
+// other meta-data.
+func (x *Exif) LoadDirTags(d *tiff.Dir, fieldMap map[uint16]FieldName) {
+	for _, tag := range d.Tags {
 		name := fieldMap[tag.Id]
 		if name == "" {
-			name = FieldName(fmt.Sprintf("%v%x", unknownPrefix, tag.Id))
+			name = FieldName(fmt.Sprintf("%v%x", UnknownPrefix, tag.Id))
 		}
 		x.main[name] = tag
 	}
-	return nil
 }
 
 // Get retrieves the EXIF tag for the given field name.
@@ -129,9 +138,7 @@ func (x *Exif) loadSubDir(r *bytes.Reader, ptrName FieldName, fieldMap map[uint1
 // If the tag is not known or not present, an error is returned. If the
 // tag name is known, the error will be a TagNotPresentError.
 func (x *Exif) Get(name FieldName) (*tiff.Tag, error) {
-	if !validField[name] {
-		return nil, fmt.Errorf("exif: invalid tag name %q", name)
-	} else if tg, ok := x.main[name]; ok {
+	if tg, ok := x.main[name]; ok {
 		return tg, nil
 	}
 	return nil, TagNotPresentError(name)
