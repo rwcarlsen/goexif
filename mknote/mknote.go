@@ -16,18 +16,6 @@ func init() {
 
 type impl struct{}
 
-func (impl) HandledFields() []exif.FieldName {
-	fields := make([]exif.FieldName,
-		len(makerNoteCanonFields)+len(makerNoteNikon3Fields))
-	for _, name := range makerNoteCanonFields {
-		fields = append(fields, name)
-	}
-	for _, name := range makerNoteNikon3Fields {
-		fields = append(fields, name)
-	}
-	return fields
-}
-
 // Decode decodes all makernote data found in x and adds it to x.  n is the
 // number of fields found/decoded from the makernote.
 func (impl) Decode(x *exif.Exif) (n int, err error) {

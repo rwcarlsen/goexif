@@ -14,29 +14,11 @@ import (
 	"github.com/rwcarlsen/goexif/tiff"
 )
 
-var validField map[FieldName]bool
 var parsers []FieldParser
-
-func init() {
-	validField = make(map[FieldName]bool)
-	addValidFields(exifFields)
-	addValidFields(gpsFields)
-	addValidFields(interopFields)
-}
-
-func addValidFields(fields map[uint16]FieldName) {
-	for _, name := range fields {
-		validField[name] = true
-	}
-}
 
 // A FieldParser is an external module that adds the ability to parse
 // nonstandard fields that may be present in an Exif file, such as MakerNote.
 type FieldParser interface {
-	// Returns a list of all fields that the FieldParser can parse from the
-	// Exif structure.
-	HandledFields() []FieldName
-
 	// Decodes additional fields, as defined in the return value of
 	// HandledFields, returning the number of fields parsed and an error.
 	// As a side effect, it adds any parsed field values to the Exif
@@ -45,9 +27,6 @@ type FieldParser interface {
 }
 
 func RegisterFieldParser(p FieldParser) {
-	for _, name := range p.HandledFields() {
-		validField[name] = true
-	}
 	parsers = append(parsers, p)
 }
 
@@ -159,9 +138,7 @@ func (x *Exif) LoadDirTags(d *tiff.Dir, fieldMap map[uint16]FieldName) {
 // If the tag is not known or not present, an error is returned. If the
 // tag name is known, the error will be a TagNotPresentError.
 func (x *Exif) Get(name FieldName) (*tiff.Tag, error) {
-	if !validField[name] {
-		return nil, fmt.Errorf("exif: invalid tag name %q", name)
-	} else if tg, ok := x.main[name]; ok {
+	if tg, ok := x.main[name]; ok {
 		return tg, nil
 	}
 	return nil, TagNotPresentError(name)
