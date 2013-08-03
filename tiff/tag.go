@@ -47,11 +47,15 @@ type Tag struct {
 	Id uint16
 	// Type is an integer (1 through 12) indicating the tag value's format.
 	Type uint16
-	// Count is the number of type Type stored in the tag's value (i.e. the tag's
-	// value is an array of type Type and length Count).
+	// Count is the number of type Type stored in the tag's value (i.e. the
+	// tag's value is an array of type Type and length Count).
 	Count uint32
 	// Val holds the bytes that represent the tag's value.
 	Val []byte
+	// ValOffset holds byte offset of the tag value w.r.t. the beginning of the
+	// reader it was decoded from. Zero if the tag value fit inside the offset
+	// field.
+	ValOffset uint32
 
 	order binary.ByteOrder
 
@@ -63,8 +67,8 @@ type Tag struct {
 
 // DecodeTag parses a tiff-encoded IFD tag from r and returns a Tag object. The
 // first read from r should be the first byte of the tag. ReadAt offsets should
-// be relative to the beginning of the tiff structure (not relative to the
-// beginning of the tag).
+// generally be relative to the beginning of the tiff structure (not relative
+// to the beginning of the tag).
 func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 	t := new(Tag)
 	t.order = order
@@ -85,22 +89,21 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 	}
 
 	valLen := typeSize[t.Type] * t.Count
-	var offset uint32
 	if valLen > 4 {
-		binary.Read(r, order, &offset)
+		binary.Read(r, order, &t.ValOffset)
 		t.Val = make([]byte, valLen)
-		n, err := r.ReadAt(t.Val, int64(offset))
+		n, err := r.ReadAt(t.Val, int64(t.ValOffset))
 		if n != int(valLen) || err != nil {
-			return nil, errors.New("tiff: tag value read failed: " + err.Error())
+			return t, errors.New("tiff: tag value read failed: " + err.Error())
 		}
 	} else {
 		val := make([]byte, valLen)
 		if _, err = io.ReadFull(r, val); err != nil {
-			return nil, errors.New("tiff: tag offset read failed: " + err.Error())
+			return t, errors.New("tiff: tag offset read failed: " + err.Error())
 		}
 		// ignore padding.
 		if _, err = io.ReadFull(r, make([]byte, 4-valLen)); err != nil {
-			return nil, errors.New("tiff: tag offset read failed: " + err.Error())
+			return t, errors.New("tiff: tag offset read failed: " + err.Error())
 		}
 
 		t.Val = val

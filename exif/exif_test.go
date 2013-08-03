@@ -2,11 +2,11 @@ package exif
 
 import (
 	"fmt"
-	"os"
-	"testing"
-	"path/filepath"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
+	"testing"
 
 	"github.com/rwcarlsen/goexif/tiff"
 )
@@ -72,7 +72,7 @@ type regresswalk struct {
 }
 
 func (w *regresswalk) Walk(name FieldName, tag *tiff.Tag) error {
-	if strings.HasPrefix(string(name), unknownPrefix) {
+	if strings.HasPrefix(string(name), UnknownPrefix) {
 		fmt.Fprintf(w.wr, "\t\t\"%v\": `%v`,\n", name, tag.String())
 	} else {
 		fmt.Fprintf(w.wr, "\t\t%v: `%v`,\n", name, tag.String())
@@ -112,7 +112,7 @@ func TestDecode(t *testing.T) {
 
 type walker struct {
 	picName string
-	t *testing.T
+	t       *testing.T
 }
 
 func (w *walker) Walk(field FieldName, tag *tiff.Tag) error {
