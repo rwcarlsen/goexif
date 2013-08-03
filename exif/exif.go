@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 
 	"github.com/rwcarlsen/goexif/tiff"
 )
@@ -30,18 +31,74 @@ func (tag TagNotPresentError) Error() string {
 	return fmt.Sprintf("exif: tag %q is not present", string(tag))
 }
 
-func isTagNotPresentErr(err error) bool {
-	_, ok := err.(TagNotPresentError)
-	return ok
+// Parser allows the registration of custom parsing and field loading
+// in the Decode function.
+type Parser interface {
+	// Parse should read data from x and insert parsed fields into x via
+	// LoadTags.
+	Parse(x *Exif) error
+}
+
+var parsers []Parser
+
+func init() {
+	RegisterParsers(&parser{})
+}
+
+// RegisterParsers registers one or more parsers to be automatically called
+// when decoding EXIF data via the Decode function.
+func RegisterParsers(ps ...Parser) {
+	parsers = append(parsers, ps...)
+}
+
+type parser struct{}
+
+func (p *parser) Parse(x *Exif) error {
+	x.LoadTags(x.Tiff.Dirs[0], exifFields, false)
+
+	// recurse into exif, gps, and interop sub-IFDs
+	if err := loadSubDir(x, ExifIFDPointer, exifFields); err != nil {
+		return err
+	}
+	if err := loadSubDir(x, GPSInfoIFDPointer, gpsFields); err != nil {
+		return err
+	}
+	return loadSubDir(x, InteroperabilityIFDPointer, interopFields)
+}
+
+func loadSubDir(x *Exif, ptr FieldName, fieldMap map[uint16]FieldName) error {
+	r := bytes.NewReader(x.Raw)
+
+	tag, err := x.Get(ptr)
+	if err != nil {
+		return nil
+	}
+	offset := tag.Int(0)
+
+	_, err = r.Seek(offset, 0)
+	if err != nil {
+		return errors.New("exif: seek to sub-IFD failed: " + err.Error())
+	}
+	subDir, _, err := tiff.DecodeDir(r, x.Tiff.Order)
+	if err != nil {
+		return errors.New("exif: sub-IFD decode failed: " + err.Error())
+	}
+	x.LoadTags(subDir, fieldMap, false)
+	return nil
 }
 
 // Exif provides access to decoded EXIF metadata fields and values.
 type Exif struct {
 	Tiff *tiff.Tiff
 	main map[FieldName]*tiff.Tag
+	Raw  []byte
 }
 
-// Decode parses EXIF-encoded data from r and returns a queryable Exif object.
+// Decode parses EXIF-encoded data from r and returns a queryable Exif
+// object. After the exif data section is called and the tiff structure
+// decoded, each registered parser is called (in order of registration). If
+// one parser returns an error, decoding terminates and the remaining
+// parsers are not called.
 func Decode(r io.Reader) (*Exif, error) {
 	// Locate the EXIF application section.
 	sec, err := newAppSec(jpeg_APP1, r)
@@ -54,57 +111,43 @@ func Decode(r io.Reader) (*Exif, error) {
 	}
 	tif, err := tiff.Decode(er)
 	if err != nil {
-		return nil, errors.New("exif: decode failed: " + err.Error())
+		return nil, fmt.Errorf("exif: decode failed (%v) ", err)
+	}
+
+	er.Seek(0, 0)
+	raw, err := ioutil.ReadAll(er)
+	if err != nil {
+		return nil, fmt.Errorf("exif: decode failed (%v) ", err)
 	}
 
 	// build an exif structure from the tiff
 	x := &Exif{
 		main: map[FieldName]*tiff.Tag{},
 		Tiff: tif,
+		Raw:  raw,
 	}
 
-	x.LoadDirTags(tif.Dirs[0], exifFields)
-
-	// recurse into exif, gps, and interop sub-IFDs
-	if err = x.loadSubDir(er, ExifIFDPointer, exifFields); err != nil {
-		return x, err
-	}
-	if err = x.loadSubDir(er, GPSInfoIFDPointer, gpsFields); err != nil {
-		return x, err
-	}
-	if err = x.loadSubDir(er, InteroperabilityIFDPointer, interopFields); err != nil {
-		return x, err
+	for i, p := range parsers {
+		if err := p.Parse(x); err != nil {
+			return x, fmt.Errorf("exif: parser %v failed (%v)", i, err)
+		}
 	}
 
 	return x, nil
 }
 
-func (x *Exif) loadSubDir(r *bytes.Reader, ptrName FieldName, fieldMap map[uint16]FieldName) error {
-	tag, ok := x.main[ptrName]
-	if !ok {
-		return nil
-	}
-	offset := tag.Int(0)
-
-	_, err := r.Seek(offset, 0)
-	if err != nil {
-		return errors.New("exif: seek to sub-IFD failed: " + err.Error())
-	}
-	subDir, _, err := tiff.DecodeDir(r, x.Tiff.Order)
-	if err != nil {
-		return errors.New("exif: sub-IFD decode failed: " + err.Error())
-	}
-	x.LoadDirTags(subDir, fieldMap)
-	return nil
-}
-
-// LoadDirTags loads tags into the available fields from the tiff Directory
+// LoadTags loads tags into the available fields from the tiff Directory
 // using the given tagid-fieldname mapping.  Used to load makernote and
-// other meta-data.
-func (x *Exif) LoadDirTags(d *tiff.Dir, fieldMap map[uint16]FieldName) {
+// other meta-data.  If showMissing is true, tags in d that are not in the
+// fieldMap will be loaded with the FieldName UnknownPrefix followed by the
+// tag ID (in hex format).
+func (x *Exif) LoadTags(d *tiff.Dir, fieldMap map[uint16]FieldName, showMissing bool) {
 	for _, tag := range d.Tags {
 		name := fieldMap[tag.Id]
 		if name == "" {
+			if !showMissing {
+				continue
+			}
 			name = FieldName(fmt.Sprintf("%v%x", UnknownPrefix, tag.Id))
 		}
 		x.main[name] = tag

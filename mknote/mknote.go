@@ -1,38 +1,41 @@
-// Package mknote implements decoding of EXIF makernote data from media
-// files.
+// Package mknote provides makernote parsers that can be used with goexif/exif.
 package mknote
 
 import (
 	"bytes"
-	"errors"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/tiff"
 )
 
-// Decode decodes all makernote data found in x and adds it to x.  n is the
+var (
+	// Canon is an exif.Parser for canon makernote data.
+	Canon = &canon{}
+	// NikonV3 is an exif.Parser for nikon makernote data.
+	NikonV3 = &nikonV3{}
+	// All is a list of all available makernote parsers
+	All = []exif.Parser{Canon, NikonV3}
+)
+
+type canon struct{}
+
+// Parse decodes all Canon makernote data found in x and adds it to x.  n is the
 // number of fields found/decoded from the makernote.
-func Decode(x *exif.Exif) (n int, err error) {
+func (_ *canon) Parse(x *exif.Exif) error {
 	m, err := x.Get(exif.MakerNote)
 	if err != nil {
-		return 0, errors.New("makernote: no makernote data found")
+		return nil
 	}
 
 	mk, err := x.Get(exif.Make)
 	if err != nil {
-		return 0, errors.New("makernote: no make data found")
+		return nil
 	}
 
-	if mk.StringVal() == "Canon" {
-		return loadCanon(x, m)
-	} else if bytes.Compare(m.Val[:6], []byte("Nikon\000")) == 0 {
-		return loadNikonV3(x, m)
-	} else {
-		return 0, errors.New("makernote: unsupported make")
+	if mk.StringVal() != "Canon" {
+		return nil
 	}
-}
 
-func loadCanon(x *exif.Exif, m *tiff.Tag) (n int, err error) {
 	// Canon notes are a single IFD directory with no header.
 	// Reader offsets need to be w.r.t. the original tiff structure.
 	buf := bytes.NewReader(append(make([]byte, m.ValOffset), m.Val...))
@@ -40,19 +43,30 @@ func loadCanon(x *exif.Exif, m *tiff.Tag) (n int, err error) {
 
 	mkNotesDir, _, err := tiff.DecodeDir(buf, x.Tiff.Order)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	x.LoadDirTags(mkNotesDir, makerNoteCanonFields)
-	return len(mkNotesDir.Tags), nil
+	x.LoadTags(mkNotesDir, makerNoteCanonFields, false)
+	return nil
 }
 
-func loadNikonV3(x *exif.Exif, m *tiff.Tag) (n int, err error) {
+type nikonV3 struct{}
+
+// Parse decodes all Nikon makernote data found in x and adds it to x.  n is the
+// number of fields found/decoded from the makernote.
+func (_ *nikonV3) Parse(x *exif.Exif) error {
+	m, err := x.Get(exif.MakerNote)
+	if err != nil {
+		return nil
+	} else if bytes.Compare(m.Val[:6], []byte("Nikon\000")) != 0 {
+		return nil
+	}
+
 	// Nikon v3 maker note is a self-contained IFD (offsets are relative
 	// to the start of the maker note)
 	mkNotes, err := tiff.Decode(bytes.NewReader(m.Val[10:]))
 	if err != nil {
-		return 0, err
+		return err
 	}
-	x.LoadDirTags(mkNotes.Dirs[0], makerNoteNikon3Fields)
-	return len(mkNotes.Dirs[0].Tags), nil
+	x.LoadTags(mkNotes.Dirs[0], makerNoteNikon3Fields, false)
+	return nil
 }
