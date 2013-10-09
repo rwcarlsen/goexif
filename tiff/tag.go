@@ -119,7 +119,9 @@ func (t *Tag) convertVals() {
 
 	switch t.Type {
 	case 2: // ascii string
-		t.strVal = string(t.Val[:len(t.Val)-1]) // ignore the last byte (NULL).
+		if len(t.Val) > 0 {
+			t.strVal = string(t.Val[:len(t.Val)-1]) // ignore the last byte (NULL).
+		}
 	case 1:
 		var v uint8
 		t.intVals = make([]int64, int(t.Count))

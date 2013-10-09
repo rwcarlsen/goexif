@@ -42,6 +42,7 @@ func main() {
 	}
 
 	x, err := exif.Decode(f)
+	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
