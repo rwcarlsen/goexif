@@ -87,6 +87,8 @@ const (
 	Sharpness                            = "Sharpness"
 	DeviceSettingDescription             = "DeviceSettingDescription"
 	SubjectDistanceRange                 = "SubjectDistanceRange"
+	JpegThumbnailOffset                  = "JpegThumbnailOffset"
+	JpegThumbnailLength                  = "JpegThumbnailLength"
 )
 
 // GPS fields
@@ -275,4 +277,9 @@ var interopFields = map[uint16]FieldName{
 	//// Interoperability sub-IFD ///////
 	/////////////////////////////////////
 	0x1: InteroperabilityIndex,
+}
+
+var thumbnailFields = map[uint16]FieldName{
+	0x0201: JpegThumbnailOffset,
+	0x0202: JpegThumbnailLength,
 }
