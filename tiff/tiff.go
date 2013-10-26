@@ -107,8 +107,8 @@ type Dir struct {
 
 // DecodeDir parses a tiff-encoded IFD from r and returns a Dir object.  offset
 // is the offset to the next IFD.  The first read from r should be at the first
-// byte of the IFD. ReadAt offsets should be relative to the beginning of the
-// tiff structure (not relative to the beginning of the IFD).
+// byte of the IFD. ReadAt offsets should generally be relative to the
+// beginning of the tiff structure (not relative to the beginning of the IFD).
 func DecodeDir(r ReadAtReader, order binary.ByteOrder) (d *Dir, offset int32, err error) {
 	d = new(Dir)
 
@@ -116,7 +116,7 @@ func DecodeDir(r ReadAtReader, order binary.ByteOrder) (d *Dir, offset int32, er
 	var nTags int16
 	err = binary.Read(r, order, &nTags)
 	if err != nil {
-		return nil, 0, errors.New("tiff: falied to read IFD tag count: " + err.Error())
+		return nil, 0, errors.New("tiff: failed to read IFD tag count: " + err.Error())
 	}
 
 	// load tags
