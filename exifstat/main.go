@@ -12,6 +12,7 @@ import (
 )
 
 var mnote = flag.Bool("mknote", false, "try to parse makernote data")
+var thumb = flag.Bool("thumb", false, "dump thumbail data to stdout (for first listed image file)")
 
 func main() {
 	flag.Parse()
@@ -32,6 +33,17 @@ func main() {
 		if err != nil {
 			log.Printf("err on %v: %v", name, err)
 			continue
+		}
+
+		if *thumb {
+			data, err := x.JpegThumbnail()
+			if err != nil {
+				log.Fatal("no thumbnail present")
+			}
+			if _, err := os.Stdout.Write(data); err != nil {
+				log.Fatal(err)
+			}
+			return
 		}
 
 		fmt.Printf("\n---- Image '%v' ----\n", name)

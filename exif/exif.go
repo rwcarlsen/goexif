@@ -56,6 +56,11 @@ type parser struct{}
 func (p *parser) Parse(x *Exif) error {
 	x.LoadTags(x.Tiff.Dirs[0], exifFields, false)
 
+	// thumbnails
+	if len(x.Tiff.Dirs) >= 2 {
+		x.LoadTags(x.Tiff.Dirs[1], thumbnailFields, false)
+	}
+
 	// recurse into exif, gps, and interop sub-IFDs
 	if err := loadSubDir(x, ExifIFDPointer, exifFields); err != nil {
 		return err
@@ -63,6 +68,7 @@ func (p *parser) Parse(x *Exif) error {
 	if err := loadSubDir(x, GPSInfoIFDPointer, gpsFields); err != nil {
 		return err
 	}
+
 	return loadSubDir(x, InteroperabilityIFDPointer, interopFields)
 }
 
@@ -237,6 +243,20 @@ func (x *Exif) String() string {
 		fmt.Fprintf(&buf, "%s: %s\n", name, tag)
 	}
 	return buf.String()
+}
+
+// JpegThumbnail returns the jpeg thumbnail if it exists. If it doesn't exist,
+// TagNotPresentError will be returned
+func (x *Exif) JpegThumbnail() ([]byte, error) {
+	offset, err := x.Get(ThumbJPEGInterchangeFormat)
+	if err != nil {
+		return nil, err
+	}
+	length, err := x.Get(ThumbJPEGInterchangeFormatLength)
+	if err != nil {
+		return nil, err
+	}
+	return x.Raw[offset.Int(0) : offset.Int(0)+length.Int(0)], nil
 }
 
 // MarshalJson implements the encoding/json.Marshaler interface providing output of

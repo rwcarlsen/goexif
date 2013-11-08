@@ -89,6 +89,12 @@ const (
 	SubjectDistanceRange                 = "SubjectDistanceRange"
 )
 
+// thumbnail fields
+const (
+	ThumbJPEGInterchangeFormat       = "ThumbJPEGInterchangeFormat" // offset to thumb jpeg SOI
+	ThumbJPEGInterchangeFormatLength = "ThumbJPEGInterchangeFormatLength" // byte length of thumb
+)
+
 // GPS fields
 const (
 	GPSVersionID        FieldName = "GPSVersionID"
@@ -275,4 +281,9 @@ var interopFields = map[uint16]FieldName{
 	//// Interoperability sub-IFD ///////
 	/////////////////////////////////////
 	0x1: InteroperabilityIndex,
+}
+
+var thumbnailFields = map[uint16]FieldName{
+	0x0201: ThumbJPEGInterchangeFormat,
+	0x0202: ThumbJPEGInterchangeFormatLength,
 }
