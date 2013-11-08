@@ -144,7 +144,8 @@ func Decode(r io.Reader) (*Exif, error) {
 		er = bytes.NewReader(b.Bytes())
 	} else {
 		// Locate the JPEG APP1 header.
-		sec, err := newAppSec(jpeg_APP1, r)
+		var sec *appSec
+		sec, err = newAppSec(jpeg_APP1, r)
 		if err != nil {
 			return nil, err
 		}
