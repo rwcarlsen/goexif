@@ -68,6 +68,7 @@ func (p *parser) Parse(x *Exif) error {
 	if err := loadSubDir(x, GPSInfoIFDPointer, gpsFields); err != nil {
 		return err
 	}
+
 	return loadSubDir(x, InteroperabilityIFDPointer, interopFields)
 }
 
@@ -247,11 +248,11 @@ func (x *Exif) String() string {
 // JpegThumbnail returns the jpeg thumbnail if it exists. If it doesn't exist,
 // TagNotPresentError will be returned
 func (x *Exif) JpegThumbnail() ([]byte, error) {
-	offset, err := x.Get(JpegThumbnailOffset)
+	offset, err := x.Get(ThumbJPEGInterchangeFormat)
 	if err != nil {
 		return nil, err
 	}
-	length, err := x.Get(JpegThumbnailLength)
+	length, err := x.Get(ThumbJPEGInterchangeFormatLength)
 	if err != nil {
 		return nil, err
 	}

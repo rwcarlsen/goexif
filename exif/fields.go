@@ -87,8 +87,12 @@ const (
 	Sharpness                            = "Sharpness"
 	DeviceSettingDescription             = "DeviceSettingDescription"
 	SubjectDistanceRange                 = "SubjectDistanceRange"
-	JpegThumbnailOffset                  = "JpegThumbnailOffset"
-	JpegThumbnailLength                  = "JpegThumbnailLength"
+)
+
+// thumbnail fields
+const (
+	ThumbJPEGInterchangeFormat       = "ThumbJPEGInterchangeFormat" // offset to thumb jpeg SOI
+	ThumbJPEGInterchangeFormatLength = "ThumbJPEGInterchangeFormatLength" // byte length of thumb
 )
 
 // GPS fields
@@ -280,6 +284,6 @@ var interopFields = map[uint16]FieldName{
 }
 
 var thumbnailFields = map[uint16]FieldName{
-	0x0201: JpegThumbnailOffset,
-	0x0202: JpegThumbnailLength,
+	0x0201: ThumbJPEGInterchangeFormat,
+	0x0202: ThumbJPEGInterchangeFormatLength,
 }
