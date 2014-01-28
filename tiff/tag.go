@@ -135,11 +135,11 @@ func (t *Tag) convertVals() {
 	r := bytes.NewReader(t.Val)
 
 	switch t.Type {
-	case 2: // ascii string
+	case DTAscii:
 		if len(t.Val) > 0 {
 			t.strVal = string(t.Val[:len(t.Val)-1]) // ignore the last byte (NULL).
 		}
-	case 1:
+	case DTByte:
 		var v uint8
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -147,7 +147,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 3:
+	case DTShort:
 		var v uint16
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -155,7 +155,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 4:
+	case DTLong:
 		var v uint32
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -163,7 +163,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 6:
+	case DTSByte:
 		var v int8
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -171,7 +171,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 8:
+	case DTSShort:
 		var v int16
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -179,7 +179,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 9:
+	case DTSLong:
 		var v int32
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -187,7 +187,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 5: // unsigned rational
+	case DTRational:
 		t.ratVals = make([][]int64, int(t.Count))
 		for i := range t.ratVals {
 			var n, d uint32
@@ -197,7 +197,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.ratVals[i] = []int64{int64(n), int64(d)}
 		}
-	case 10: // signed rational
+	case DTSRational:
 		t.ratVals = make([][]int64, int(t.Count))
 		for i := range t.ratVals {
 			var n, d int32
@@ -207,7 +207,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.ratVals[i] = []int64{int64(n), int64(d)}
 		}
-	case 11: // float32
+	case DTFloat: // float32
 		t.floatVals = make([]float64, int(t.Count))
 		for i := range t.floatVals {
 			var v float32
@@ -215,7 +215,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.floatVals[i] = float64(v)
 		}
-	case 12: // float64 (double)
+	case DTDouble:
 		t.floatVals = make([]float64, int(t.Count))
 		for i := range t.floatVals {
 			var u float64
@@ -230,15 +230,15 @@ func (t *Tag) convertVals() {
 // tag's value properly typed (e.g. integer, rational, etc.).
 func (t *Tag) TypeCategory() TypeCategory {
 	switch t.Type {
-	case 1, 3, 4, 6, 8, 9:
+	case DTByte, DTShort, DTLong, DTSByte, DTSShort, DTSLong:
 		return IntVal
-	case 5, 10:
+	case DTRational, DTSRational:
 		return RatVal
-	case 11, 12:
+	case DTFloat, DTDouble:
 		return FloatVal
-	case 2:
+	case DTAscii:
 		return StringVal
-	case 7:
+	case DTUndefined:
 		return UndefVal
 	}
 	return OtherVal
