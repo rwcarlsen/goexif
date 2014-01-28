@@ -25,20 +25,37 @@ const (
 	OtherVal
 )
 
+type DataType uint16
+
+const (
+	DTByte      DataType = 1
+	DTAscii     DataType = 2
+	DTShort     DataType = 3
+	DTLong      DataType = 4
+	DTRational  DataType = 5
+	DTSByte     DataType = 6
+	DTUndefined DataType = 7
+	DTSShort    DataType = 8
+	DTSLong     DataType = 9
+	DTSRational DataType = 10
+	DTFloat     DataType = 11
+	DTDouble    DataType = 12
+)
+
 // typeSize specifies the size in bytes of each type.
-var typeSize = map[uint16]uint32{
-	1:  1,
-	2:  1,
-	3:  2,
-	4:  4,
-	5:  8,
-	6:  1,
-	7:  1,
-	8:  2,
-	9:  4,
-	10: 8,
-	11: 4,
-	12: 8,
+var typeSize = map[DataType]uint32{
+	DTByte:      1,
+	DTAscii:     1,
+	DTShort:     2,
+	DTLong:      4,
+	DTRational:  8,
+	DTSByte:     1,
+	DTUndefined: 1,
+	DTSShort:    2,
+	DTSLong:     4,
+	DTSRational: 8,
+	DTFloat:     4,
+	DTDouble:    8,
 }
 
 // Tag reflects the parsed content of a tiff IFD tag.
@@ -46,7 +63,7 @@ type Tag struct {
 	// Id is the 2-byte tiff tag identifier.
 	Id uint16
 	// Type is an integer (1 through 12) indicating the tag value's format.
-	Type uint16
+	Type DataType
 	// Count is the number of type Type stored in the tag's value (i.e. the
 	// tag's value is an array of type Type and length Count).
 	Count uint32
