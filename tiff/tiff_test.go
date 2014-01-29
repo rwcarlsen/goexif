@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-var sampleDir = flag.String("test_sample_dir", ".", "Directory where the samples for testing are located")
+var dataDir = flag.String("test_data_dir", ".", "Directory where the data files for testing are located")
 
 type input struct {
 	tgId   string
@@ -192,7 +192,7 @@ func buildInput(in input, order binary.ByteOrder) []byte {
 }
 
 func TestDecode(t *testing.T) {
-	name := filepath.Join(*sampleDir, "sample1.tif")
+	name := filepath.Join(*dataDir, "sample1.tif")
 	f, err := os.Open(name)
 	if err != nil {
 		t.Fatalf("%v\n", err)

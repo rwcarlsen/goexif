@@ -15,7 +15,7 @@ import (
 // switch to true to regenerate regression expected values
 var regenRegress = false
 
-var sampleDir = flag.String("test_sample_dir", "samples", "Directory where the samples for testing are located")
+var dataDir = flag.String("test_data_dir", ".", "Directory where the data files for testing are located")
 
 // TestRegenRegress regenerates the expected image exif fields/values for
 // sample images.
@@ -84,14 +84,15 @@ func (w *regresswalk) Walk(name FieldName, tag *tiff.Tag) error {
 }
 
 func TestDecode(t *testing.T) {
-	f, err := os.Open(*sampleDir)
+	fpath := filepath.Join(*dataDir, "samples")
+	f, err := os.Open(fpath)
 	if err != nil {
-		t.Fatalf("Could not open sample directory: %v", err)
+		t.Fatalf("Could not open sample directory '%s': %v", fpath, err)
 	}
 
 	names, err := f.Readdirnames(0)
 	if err != nil {
-		t.Fatalf("Could not read sample directory: %v", err)
+		t.Fatalf("Could not read sample directory '%s': %v", fpath, err)
 	}
 
 	cnt := 0
@@ -101,7 +102,7 @@ func TestDecode(t *testing.T) {
 			continue
 		}
 		t.Logf("testing file %v", name)
-		f, err := os.Open(filepath.Join(*sampleDir, name))
+		f, err := os.Open(filepath.Join(fpath, name))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -135,7 +136,7 @@ func (w *walker) Walk(field FieldName, tag *tiff.Tag) error {
 }
 
 func TestMarshal(t *testing.T) {
-	name := "sample1.jpg"
+	name := filepath.Join(*dataDir, "sample1.jpg")
 	f, err := os.Open(name)
 	if err != nil {
 		t.Fatalf("%v\n", err)
