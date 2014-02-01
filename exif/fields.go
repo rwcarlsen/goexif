@@ -91,7 +91,7 @@ const (
 
 // thumbnail fields
 const (
-	ThumbJPEGInterchangeFormat       = "ThumbJPEGInterchangeFormat" // offset to thumb jpeg SOI
+	ThumbJPEGInterchangeFormat       = "ThumbJPEGInterchangeFormat"       // offset to thumb jpeg SOI
 	ThumbJPEGInterchangeFormatLength = "ThumbJPEGInterchangeFormatLength" // byte length of thumb
 )
 
