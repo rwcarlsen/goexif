@@ -1,6 +1,7 @@
 package exif
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,8 @@ import (
 
 // switch to true to regenerate regression expected values
 var regenRegress = false
+
+var dataDir = flag.String("test_data_dir", ".", "Directory where the data files for testing are located")
 
 // TestRegenRegress regenerates the expected image exif fields/values for
 // sample images.
@@ -81,18 +84,23 @@ func (w *regresswalk) Walk(name FieldName, tag *tiff.Tag) error {
 }
 
 func TestDecode(t *testing.T) {
-	fpath := "samples"
+	fpath := filepath.Join(*dataDir, "samples")
 	f, err := os.Open(fpath)
 	if err != nil {
-		t.Fatalf("Could not open sample directory: %v", err)
+		t.Fatalf("Could not open sample directory '%s': %v", fpath, err)
 	}
 
 	names, err := f.Readdirnames(0)
 	if err != nil {
-		t.Fatalf("Could not read sample directory: %v", err)
+		t.Fatalf("Could not read sample directory '%s': %v", fpath, err)
 	}
 
+	cnt := 0
 	for _, name := range names {
+		if !strings.HasSuffix(name, ".jpg") {
+			t.Logf("skipping non .jpg file %v", name)
+			continue
+		}
 		t.Logf("testing file %v", name)
 		f, err := os.Open(filepath.Join(fpath, name))
 		if err != nil {
@@ -107,6 +115,10 @@ func TestDecode(t *testing.T) {
 		}
 
 		x.Walk(&walker{name, t})
+		cnt++
+	}
+	if cnt != len(regressExpected) {
+		t.Errorf("Did not process enough samples, got %d, want %d", cnt, len(regressExpected))
 	}
 }
 
@@ -124,7 +136,7 @@ func (w *walker) Walk(field FieldName, tag *tiff.Tag) error {
 }
 
 func TestMarshal(t *testing.T) {
-	name := "sample1.jpg"
+	name := filepath.Join(*dataDir, "sample1.jpg")
 	f, err := os.Open(name)
 	if err != nil {
 		t.Fatalf("%v\n", err)

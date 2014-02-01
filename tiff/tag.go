@@ -12,10 +12,10 @@ import (
 	"unicode/utf8"
 )
 
-// TypeCategory specifies the category of a type.
+// TypeCategory specifies the Go type equivalent used to represent the basic
+// tiff data types.
 type TypeCategory int
 
-// Type categories.
 const (
 	IntVal TypeCategory = iota
 	FloatVal
@@ -25,28 +25,46 @@ const (
 	OtherVal
 )
 
+// DataType represents the basic tiff tag data types.
+type DataType uint16
+
+const (
+	DTByte      DataType = 1
+	DTAscii              = 2
+	DTShort              = 3
+	DTLong               = 4
+	DTRational           = 5
+	DTSByte              = 6
+	DTUndefined          = 7
+	DTSShort             = 8
+	DTSLong              = 9
+	DTSRational          = 10
+	DTFloat              = 11
+	DTDouble             = 12
+)
+
 // typeSize specifies the size in bytes of each type.
-var typeSize = map[uint16]uint32{
-	1:  1,
-	2:  1,
-	3:  2,
-	4:  4,
-	5:  8,
-	6:  1,
-	7:  1,
-	8:  2,
-	9:  4,
-	10: 8,
-	11: 4,
-	12: 8,
+var typeSize = map[DataType]uint32{
+	DTByte:      1,
+	DTAscii:     1,
+	DTShort:     2,
+	DTLong:      4,
+	DTRational:  8,
+	DTSByte:     1,
+	DTUndefined: 1,
+	DTSShort:    2,
+	DTSLong:     4,
+	DTSRational: 8,
+	DTFloat:     4,
+	DTDouble:    8,
 }
 
 // Tag reflects the parsed content of a tiff IFD tag.
 type Tag struct {
 	// Id is the 2-byte tiff tag identifier.
 	Id uint16
-	// Type is an integer (1 through 12) indicating the tag value's format.
-	Type uint16
+	// Type is an integer (1 through 12) indicating the tag value's data type.
+	Type DataType
 	// Count is the number of type Type stored in the tag's value (i.e. the
 	// tag's value is an array of type Type and length Count).
 	Count uint32
@@ -118,11 +136,11 @@ func (t *Tag) convertVals() {
 	r := bytes.NewReader(t.Val)
 
 	switch t.Type {
-	case 2: // ascii string
+	case DTAscii:
 		if len(t.Val) > 0 {
 			t.strVal = string(t.Val[:len(t.Val)-1]) // ignore the last byte (NULL).
 		}
-	case 1:
+	case DTByte:
 		var v uint8
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -130,7 +148,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 3:
+	case DTShort:
 		var v uint16
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -138,7 +156,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 4:
+	case DTLong:
 		var v uint32
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -146,7 +164,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 6:
+	case DTSByte:
 		var v int8
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -154,7 +172,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 8:
+	case DTSShort:
 		var v int16
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -162,7 +180,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 9:
+	case DTSLong:
 		var v int32
 		t.intVals = make([]int64, int(t.Count))
 		for i := range t.intVals {
@@ -170,7 +188,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.intVals[i] = int64(v)
 		}
-	case 5: // unsigned rational
+	case DTRational:
 		t.ratVals = make([][]int64, int(t.Count))
 		for i := range t.ratVals {
 			var n, d uint32
@@ -180,7 +198,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.ratVals[i] = []int64{int64(n), int64(d)}
 		}
-	case 10: // signed rational
+	case DTSRational:
 		t.ratVals = make([][]int64, int(t.Count))
 		for i := range t.ratVals {
 			var n, d int32
@@ -190,7 +208,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.ratVals[i] = []int64{int64(n), int64(d)}
 		}
-	case 11: // float32
+	case DTFloat: // float32
 		t.floatVals = make([]float64, int(t.Count))
 		for i := range t.floatVals {
 			var v float32
@@ -198,7 +216,7 @@ func (t *Tag) convertVals() {
 			panicOn(err)
 			t.floatVals[i] = float64(v)
 		}
-	case 12: // float64 (double)
+	case DTDouble:
 		t.floatVals = make([]float64, int(t.Count))
 		for i := range t.floatVals {
 			var u float64
@@ -209,34 +227,34 @@ func (t *Tag) convertVals() {
 	}
 }
 
-// Format returns a value indicating which method can be called to retrieve the
+// TypeCategory returns a value indicating which method can be called to retrieve the
 // tag's value properly typed (e.g. integer, rational, etc.).
 func (t *Tag) TypeCategory() TypeCategory {
 	switch t.Type {
-	case 1, 3, 4, 6, 8, 9:
+	case DTByte, DTShort, DTLong, DTSByte, DTSShort, DTSLong:
 		return IntVal
-	case 5, 10:
+	case DTRational, DTSRational:
 		return RatVal
-	case 11, 12:
+	case DTFloat, DTDouble:
 		return FloatVal
-	case 2:
+	case DTAscii:
 		return StringVal
-	case 7:
+	case DTUndefined:
 		return UndefVal
 	}
 	return OtherVal
 }
 
-// Rat returns the tag's i'th value as a rational number. It panics if the tag format
-// is not RatVal, if the denominator is zero, or if the tag has no i'th
-// component. If a denominator could be zero, use Rat2.
+// Rat returns the tag's i'th value as a rational number. It panics if the tag
+// TypeCategory is not RatVal, if the denominator is zero, or if the tag has no
+// i'th component. If a denominator could be zero, use Rat2.
 func (t *Tag) Rat(i int) *big.Rat {
 	n, d := t.Rat2(i)
 	return big.NewRat(n, d)
 }
 
 // Rat2 returns the tag's i'th value as a rational number represented by a
-// numerator-denominator pair. It panics if the tag format is not RatVal
+// numerator-denominator pair. It panics if the tag TypeCategory is not RatVal
 // or if the tag value has no i'th component.
 func (t *Tag) Rat2(i int) (num, den int64) {
 	if t.TypeCategory() != RatVal {
@@ -245,8 +263,8 @@ func (t *Tag) Rat2(i int) (num, den int64) {
 	return t.ratVals[i][0], t.ratVals[i][1]
 }
 
-// Int returns the tag's i'th value as an integer. It panics if the tag format is not
-// IntVal or if the tag value has no i'th component.
+// Int returns the tag's i'th value as an integer. It panics if the tag
+// TypeCategory is not IntVal or if the tag value has no i'th component.
 func (t *Tag) Int(i int) int64 {
 	if t.TypeCategory() != IntVal {
 		panic("Tag type category is not 'int'")
@@ -254,8 +272,8 @@ func (t *Tag) Int(i int) int64 {
 	return t.intVals[i]
 }
 
-// Float returns the tag's i'th value as a float. It panics if the tag format is not
-// FloatVal or if the tag value has no i'th component.
+// Float returns the tag's i'th value as a float. It panics if the tag
+// TypeCategory is not FloatVal or if the tag value has no i'th component.
 func (t *Tag) Float(i int) float64 {
 	if t.TypeCategory() != FloatVal {
 		panic("Tag type category is not 'float'")
@@ -264,7 +282,7 @@ func (t *Tag) Float(i int) float64 {
 }
 
 // StringVal returns the tag's value as a string. It panics if the tag
-// format is not StringVal
+// TypeCategory is not StringVal.
 func (t *Tag) StringVal() string {
 	if t.TypeCategory() != StringVal {
 		panic("Tag type category is not 'ascii string'")
