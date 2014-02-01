@@ -216,7 +216,7 @@ func TestDecodeTag_blob(t *testing.T) {
 
 	t.Logf("tag: %v+\n", tg)
 	n, d := tg.Rat2(0)
-	t.Logf("tag rat val: %v\n", n, d)
+	t.Logf("tag rat val: %v/%v\n", n, d)
 }
 
 func data() []byte {

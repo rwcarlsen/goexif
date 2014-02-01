@@ -12,10 +12,10 @@ import (
 	"unicode/utf8"
 )
 
-// TypeCategory specifies the category of a type.
+// TypeCategory specifies the Go type equivalent used to represent the basic
+// tiff data types.
 type TypeCategory int
 
-// Type categories.
 const (
 	IntVal TypeCategory = iota
 	FloatVal
@@ -25,21 +25,22 @@ const (
 	OtherVal
 )
 
+// DataType represents the basic tiff tag data types.
 type DataType uint16
 
 const (
 	DTByte      DataType = 1
-	DTAscii     DataType = 2
-	DTShort     DataType = 3
-	DTLong      DataType = 4
-	DTRational  DataType = 5
-	DTSByte     DataType = 6
-	DTUndefined DataType = 7
-	DTSShort    DataType = 8
-	DTSLong     DataType = 9
-	DTSRational DataType = 10
-	DTFloat     DataType = 11
-	DTDouble    DataType = 12
+	DTAscii              = 2
+	DTShort              = 3
+	DTLong               = 4
+	DTRational           = 5
+	DTSByte              = 6
+	DTUndefined          = 7
+	DTSShort             = 8
+	DTSLong              = 9
+	DTSRational          = 10
+	DTFloat              = 11
+	DTDouble             = 12
 )
 
 // typeSize specifies the size in bytes of each type.
@@ -62,7 +63,7 @@ var typeSize = map[DataType]uint32{
 type Tag struct {
 	// Id is the 2-byte tiff tag identifier.
 	Id uint16
-	// Type is an integer (1 through 12) indicating the tag value's format.
+	// Type is an integer (1 through 12) indicating the tag value's data type.
 	Type DataType
 	// Count is the number of type Type stored in the tag's value (i.e. the
 	// tag's value is an array of type Type and length Count).
@@ -226,7 +227,7 @@ func (t *Tag) convertVals() {
 	}
 }
 
-// Format returns a value indicating which method can be called to retrieve the
+// TypeCategory returns a value indicating which method can be called to retrieve the
 // tag's value properly typed (e.g. integer, rational, etc.).
 func (t *Tag) TypeCategory() TypeCategory {
 	switch t.Type {
@@ -244,16 +245,16 @@ func (t *Tag) TypeCategory() TypeCategory {
 	return OtherVal
 }
 
-// Rat returns the tag's i'th value as a rational number. It panics if the tag format
-// is not RatVal, if the denominator is zero, or if the tag has no i'th
-// component. If a denominator could be zero, use Rat2.
+// Rat returns the tag's i'th value as a rational number. It panics if the tag
+// TypeCategory is not RatVal, if the denominator is zero, or if the tag has no
+// i'th component. If a denominator could be zero, use Rat2.
 func (t *Tag) Rat(i int) *big.Rat {
 	n, d := t.Rat2(i)
 	return big.NewRat(n, d)
 }
 
 // Rat2 returns the tag's i'th value as a rational number represented by a
-// numerator-denominator pair. It panics if the tag format is not RatVal
+// numerator-denominator pair. It panics if the tag TypeCategory is not RatVal
 // or if the tag value has no i'th component.
 func (t *Tag) Rat2(i int) (num, den int64) {
 	if t.TypeCategory() != RatVal {
@@ -262,8 +263,8 @@ func (t *Tag) Rat2(i int) (num, den int64) {
 	return t.ratVals[i][0], t.ratVals[i][1]
 }
 
-// Int returns the tag's i'th value as an integer. It panics if the tag format is not
-// IntVal or if the tag value has no i'th component.
+// Int returns the tag's i'th value as an integer. It panics if the tag
+// TypeCategory is not IntVal or if the tag value has no i'th component.
 func (t *Tag) Int(i int) int64 {
 	if t.TypeCategory() != IntVal {
 		panic("Tag type category is not 'int'")
@@ -271,8 +272,8 @@ func (t *Tag) Int(i int) int64 {
 	return t.intVals[i]
 }
 
-// Float returns the tag's i'th value as a float. It panics if the tag format is not
-// FloatVal or if the tag value has no i'th component.
+// Float returns the tag's i'th value as a float. It panics if the tag
+// TypeCategory is not FloatVal or if the tag value has no i'th component.
 func (t *Tag) Float(i int) float64 {
 	if t.TypeCategory() != FloatVal {
 		panic("Tag type category is not 'float'")
@@ -281,7 +282,7 @@ func (t *Tag) Float(i int) float64 {
 }
 
 // StringVal returns the tag's value as a string. It panics if the tag
-// format is not StringVal
+// TypeCategory is not StringVal.
 func (t *Tag) StringVal() string {
 	if t.TypeCategory() != StringVal {
 		panic("Tag type category is not 'ascii string'")
