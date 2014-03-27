@@ -17,6 +17,7 @@ import (
 
 const (
 	jpeg_APP1 = 0xE1
+	jpeg_COM  = 0xFE
 
 	exifPointer    = 0x8769
 	gpsPointer     = 0x8825
@@ -95,9 +96,11 @@ func loadSubDir(x *Exif, ptr FieldName, fieldMap map[uint16]FieldName) error {
 
 // Exif provides access to decoded EXIF metadata fields and values.
 type Exif struct {
-	Tiff *tiff.Tiff
-	main map[FieldName]*tiff.Tag
-	Raw  []byte
+	Tiff    *tiff.Tiff
+	main    map[FieldName]*tiff.Tag
+	Raw     []byte
+	// Contents of the JPEG COM segment (Comment).
+	Comment string
 }
 
 // Decode parses EXIF-encoded data from r and returns a queryable Exif
@@ -140,6 +143,7 @@ func Decode(r io.Reader) (*Exif, error) {
 		tif *tiff.Tiff
 	)
 
+	var comment string
 	if isTiff {
 		// Functions below need the IFDs from the TIFF data to be stored in a
 		// *bytes.Reader.  We use TeeReader to get a copy of the bytes as a
@@ -154,6 +158,11 @@ func Decode(r io.Reader) (*Exif, error) {
 		sec, err = newAppSec(jpeg_APP1, r)
 		if err != nil {
 			return nil, err
+		}
+		var desc *appSec
+		desc, err = newAppSec(jpeg_COM, r)
+		if err == nil {
+			comment = string(desc.data)
 		}
 		// Strip away EXIF header.
 		er, err = sec.exifReader()
@@ -175,9 +184,10 @@ func Decode(r io.Reader) (*Exif, error) {
 
 	// build an exif structure from the tiff
 	x := &Exif{
-		main: map[FieldName]*tiff.Tag{},
-		Tiff: tif,
-		Raw:  raw,
+		main:    map[FieldName]*tiff.Tag{},
+		Tiff:    tif,
+		Raw:     raw,
+		Comment: comment,
 	}
 
 	for i, p := range parsers {
