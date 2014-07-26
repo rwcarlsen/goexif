@@ -230,6 +230,9 @@ func (t *Tag) convertVals() {
 // TypeCategory returns a value indicating which method can be called to retrieve the
 // tag's value properly typed (e.g. integer, rational, etc.).
 func (t *Tag) TypeCategory() TypeCategory {
+	if t == nil {
+		return UndefVal
+	}
 	switch t.Type {
 	case DTByte, DTShort, DTLong, DTSByte, DTSShort, DTSLong:
 		return IntVal
@@ -257,6 +260,9 @@ func (t *Tag) Rat(i int) *big.Rat {
 // numerator-denominator pair. It panics if the tag TypeCategory is not RatVal
 // or if the tag value has no i'th component.
 func (t *Tag) Rat2(i int) (num, den int64) {
+	if t == nil {
+		return 0, 1
+	}
 	if t.TypeCategory() != RatVal {
 		panic("Tag type category is not 'rational'")
 	}
@@ -284,6 +290,9 @@ func (t *Tag) Float(i int) float64 {
 // StringVal returns the tag's value as a string. It panics if the tag
 // TypeCategory is not StringVal.
 func (t *Tag) StringVal() string {
+	if t == nil {
+		return "UnKnown"
+	}
 	if t.TypeCategory() != StringVal {
 		panic("Tag type category is not 'ascii string'")
 	}
