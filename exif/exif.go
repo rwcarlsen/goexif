@@ -79,7 +79,10 @@ func loadSubDir(x *Exif, ptr FieldName, fieldMap map[uint16]FieldName) error {
 	if err != nil {
 		return nil
 	}
-	offset := tag.Int(0)
+	offset, err := tag.Int(0)
+	if err != nil {
+		return nil
+	}
 
 	_, err = r.Seek(offset, 0)
 	if err != nil {
@@ -252,11 +255,21 @@ func (x *Exif) JpegThumbnail() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	start, err := offset.Int(0)
+	if err != nil {
+		return nil, err
+	}
+
 	length, err := x.Get(ThumbJPEGInterchangeFormatLength)
 	if err != nil {
 		return nil, err
 	}
-	return x.Raw[offset.Int(0) : offset.Int(0)+length.Int(0)], nil
+	l, err := length.Int(0)
+	if err != nil {
+		return nil, err
+	}
+
+	return x.Raw[start : start+l], nil
 }
 
 // MarshalJson implements the encoding/json.Marshaler interface providing output of
