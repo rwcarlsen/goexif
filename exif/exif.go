@@ -79,7 +79,7 @@ func loadSubDir(x *Exif, ptr FieldName, fieldMap map[uint16]FieldName) error {
 	if err != nil {
 		return nil
 	}
-	offset, err := tag.Int(0)
+	offset, err := tag.Int64(0)
 	if err != nil {
 		return nil
 	}

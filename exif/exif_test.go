@@ -114,6 +114,7 @@ func TestDecode(t *testing.T) {
 			t.Fatalf("No error and yet %v was not decoded", name)
 		}
 
+		t.Logf("checking pic %v", name)
 		x.Walk(&walker{name, t})
 		cnt++
 	}
@@ -129,8 +130,28 @@ type walker struct {
 
 func (w *walker) Walk(field FieldName, tag *tiff.Tag) error {
 	// this needs to be commented out when regenerating regress expected vals
-	if v := regressExpected[w.picName][field]; v != tag.String() {
-		w.t.Errorf("pic %v:  expected '%v' got '%v'", w.picName, v, tag.String())
+	pic := regressExpected[w.picName]
+	if pic == nil {
+		w.t.Errorf("   regression data not found")
+		return nil
+	}
+
+	exp, ok := pic[field]
+	if !ok {
+		w.t.Errorf("   regression data does not have field %v", field)
+		return nil
+	}
+
+	s := tag.String()
+	if tag.Count == 1 && s != "\"\"" {
+		s = fmt.Sprintf("[%s]", s)
+	}
+	got := fmt.Sprintf("{Id: %X, Val: %s}", tag.Id, s)
+
+	if exp != got {
+		fmt.Println("s: ", s)
+		fmt.Printf("len(s)=%v\n", len(s))
+		w.t.Errorf("   field %v bad tag: expected '%s', got '%s'", field, exp, got)
 	}
 	return nil
 }
