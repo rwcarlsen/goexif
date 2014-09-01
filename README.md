@@ -31,6 +31,7 @@ import (
   "fmt"
 
   "github.com/rwcarlsen/goexif/exif"
+  "github.com/rwcarlsen/goexif/mknote"
 )
 
 func main() {
@@ -42,6 +43,9 @@ func main() {
 	}
 
 	x, err := exif.Decode(f)
+	for _, parser := range mknote.All {
+		x.RegisterParsers(parser)
+	}
 	defer f.Close()
 	if err != nil {
 		log.Fatal(err)
