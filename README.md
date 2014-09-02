@@ -43,6 +43,7 @@ func main() {
 	}
 
 	x, err := exif.Decode(f)
+	// Register Camera make specific parses, currently Nikon and Canon.
 	for _, parser := range mknote.All {
 		x.RegisterParsers(parser)
 	}
