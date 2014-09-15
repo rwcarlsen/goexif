@@ -88,7 +88,10 @@ func loadSubDir(x *Exif, ptr FieldName, fieldMap map[uint16]FieldName) error {
 	if err != nil {
 		return nil
 	}
-	offset := tag.Int(0)
+	offset, err := tag.Int64(0)
+	if err != nil {
+		return nil
+	}
 
 	_, err = r.Seek(offset, 0)
 	if err != nil {
@@ -263,7 +266,7 @@ func (x *Exif) DateTime() (time.Time, error) {
 			return dt, err
 		}
 	}
-	if tag.TypeCategory() != tiff.StringVal {
+	if tag.Format() != tiff.StringVal {
 		return dt, errors.New("DateTime[Original] not in string format")
 	}
 	exifTimeLayout := "2006:01:02 15:04:05"
@@ -331,23 +334,39 @@ func parseTagDegreesString(s string) (float64, error) {
 	return degrees + minutes/60.0 + seconds/3600.0, nil
 }
 
+func parse3Rat2(tag *tiff.Tag) ([3]float64, error) {
+	v := [3]float64{}
+	for i := range v {
+		num, den, err := tag.Rat2(i)
+		if err != nil {
+			return v, err
+		}
+		v[i] = ratFloat(num, den)
+		if tag.Count < uint32(i+2) {
+			break
+		}
+	}
+	return v, nil
+}
+
 func tagDegrees(tag *tiff.Tag) (float64, error) {
-	switch tag.TypeCategory() {
+	switch tag.Format() {
 	case tiff.RatVal:
 		// The usual case, according to the Exif spec
 		// (http://www.kodak.com/global/plugins/acrobat/en/service/digCam/exifStandard2.pdf,
 		// sec 4.6.6, p. 52 et seq.)
-		degrees := ratFloat(tag.Rat2(0))
-		if tag.Count >= 2 {
-			degrees += ratFloat(tag.Rat2(1)) / 60
-			if tag.Count >= 3 {
-				degrees += ratFloat(tag.Rat2(2)) / 3600
-			}
+		v, err := parse3Rat2(tag)
+		if err != nil {
+			return 0.0, err
 		}
-		return degrees, nil
+		return v[0] + v[1]/60 + v[2]/3600.0, nil
 	case tiff.StringVal:
 		// Encountered this weird case with a panorama picture taken with a HTC phone
-		return parseTagDegreesString(tag.StringVal())
+		s, err := tag.StringVal()
+		if err != nil {
+			return 0.0, err
+		}
+		return parseTagDegreesString(s)
 	default:
 		// don't know how to parse value, give up
 		return 0.0, fmt.Errorf("Malformed EXIF Tag Degrees")
@@ -380,11 +399,17 @@ func (x *Exif) LatLong() (lat, long float64, err error) {
 	if lat, err = tagDegrees(latTag); err != nil {
 		return 0, 0, fmt.Errorf("Cannot parse latitude: %v", err)
 	}
-	if ewTag.StringVal() == "W" {
+	ew, err := ewTag.StringVal()
+	if err == nil && ew == "W" {
 		long *= -1.0
+	} else if err != nil {
+		return 0, 0, fmt.Errorf("Cannot parse longitude: %v", err)
 	}
-	if nsTag.StringVal() == "S" {
+	ns, err := nsTag.StringVal()
+	if err == nil && ns == "S" {
 		lat *= -1.0
+	} else if err != nil {
+		return 0, 0, fmt.Errorf("Cannot parse longitude: %v", err)
 	}
 	return lat, long, nil
 }
@@ -405,11 +430,21 @@ func (x *Exif) JpegThumbnail() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	start, err := offset.Int(0)
+	if err != nil {
+		return nil, err
+	}
+
 	length, err := x.Get(ThumbJPEGInterchangeFormatLength)
 	if err != nil {
 		return nil, err
 	}
-	return x.Raw[offset.Int(0) : offset.Int(0)+length.Int(0)], nil
+	l, err := length.Int(0)
+	if err != nil {
+		return nil, err
+	}
+
+	return x.Raw[start : start+l], nil
 }
 
 // MarshalJson implements the encoding/json.Marshaler interface providing output of
