@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -157,4 +158,37 @@ func TestMarshal(t *testing.T) {
 	}
 
 	t.Logf("%s", b)
+}
+
+func testSingleParseDegreesString(t *testing.T, s string, w float64) {
+	g, err := parseTagDegreesString(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if math.Abs(w-g) > 1e-10 {
+		t.Errorf("Wrong parsing result %s: Want %.12f, got %.12f", s, w, g)
+	}
+}
+
+func TestParseTagDegreesString(t *testing.T) {
+	// semicolon as decimal mark
+	testSingleParseDegreesString(t, "52,00000,50,00000,34,01180", 52.842781055556) // comma as separator
+	testSingleParseDegreesString(t, "52,00000;50,00000;34,01180", 52.842781055556) // semicolon as separator
+
+	// point as decimal mark
+	testSingleParseDegreesString(t, "14.00000,44.00000,34.01180", 14.742781055556) // comma as separator
+	testSingleParseDegreesString(t, "14.00000;44.00000;34.01180", 14.742781055556) // semicolon as separator
+	testSingleParseDegreesString(t, "14.00000;44.00000,34.01180", 14.742781055556) // mixed separators
+
+	testSingleParseDegreesString(t, "-008.0,30.0,03.6", -8.501) // leading zeros
+
+	// no decimal places
+	testSingleParseDegreesString(t, "-10,15,54", -10.265)
+	testSingleParseDegreesString(t, "-10;15;54", -10.265)
+
+	// incorrect mix of comma and point as decimal mark
+	s := "-17,00000,15.00000,04.80000"
+	if _, err := parseTagDegreesString(s); err == nil {
+		t.Error("parseTagDegreesString: false positive for " + s)
+	}
 }
