@@ -147,7 +147,7 @@ func (w *walker) Walk(field FieldName, tag *tiff.Tag) error {
 	if tag.Count == 1 && s != "\"\"" {
 		s = fmt.Sprintf("[%s]", s)
 	}
-	got := fmt.Sprintf("{Id: %X, Val: %s}", tag.Id, s)
+	got := tag.String()
 
 	if exp != got {
 		fmt.Println("s: ", s)
