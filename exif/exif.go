@@ -11,6 +11,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/rwcarlsen/goexif/tiff"
 )
@@ -29,6 +33,11 @@ type TagNotPresentError FieldName
 
 func (tag TagNotPresentError) Error() string {
 	return fmt.Sprintf("exif: tag %q is not present", string(tag))
+}
+
+func IsTagNotPresentError(err error) bool {
+	_, ok := err.(TagNotPresentError)
+	return ok
 }
 
 // Parser allows the registration of custom parsing and field loading
@@ -237,6 +246,172 @@ func (x *Exif) Walk(w Walker) error {
 		}
 	}
 	return nil
+}
+
+// DateTime returns the EXIF's "DateTimeOriginal" field, which
+// is the creation time of the photo. If not found, it tries
+// the "DateTime" (which is meant as the modtime) instead.
+// The error will be TagNotPresentErr if none of those tags
+// were found, or a generic error if the tag value was
+// not a string, or the error returned by time.Parse.
+//
+// If the EXIF lacks timezone information or GPS time, the returned
+// time's Location will be time.Local.
+func (x *Exif) DateTime() (time.Time, error) {
+	var dt time.Time
+	tag, err := x.Get(DateTimeOriginal)
+	if err != nil {
+		tag, err = x.Get(DateTime)
+		if err != nil {
+			return dt, err
+		}
+	}
+	if tag.Format() != tiff.StringVal {
+		return dt, errors.New("DateTime[Original] not in string format")
+	}
+	exifTimeLayout := "2006:01:02 15:04:05"
+	dateStr := strings.TrimRight(string(tag.Val), "\x00")
+	// TODO(bradfitz,mpl): look for timezone offset, GPS time, etc.
+	// For now, just always return the time.Local timezone.
+	return time.ParseInLocation(exifTimeLayout, dateStr, time.Local)
+}
+
+func ratFloat(num, dem int64) float64 {
+	return float64(num) / float64(dem)
+}
+
+// Tries to parse a Geo degrees value from a string as it was found in some
+// EXIF data.
+// Supported formats so far:
+// - "52,00000,50,00000,34,01180" ==> 52 deg 50'34.0118"
+//   Probably due to locale the comma is used as decimal mark as well as the
+//   separator of three floats (degrees, minutes, seconds)
+//   http://en.wikipedia.org/wiki/Decimal_mark#Hindu.E2.80.93Arabic_numeral_system
+// - "52.0,50.0,34.01180" ==> 52deg50'34.0118"
+// - "52,50,34.01180"     ==> 52deg50'34.0118"
+func parseTagDegreesString(s string) (float64, error) {
+	const unparsableErrorFmt = "Unknown coordinate format: %s"
+	isSplitRune := func(c rune) bool {
+		return c == ',' || c == ';'
+	}
+	parts := strings.FieldsFunc(s, isSplitRune)
+	var degrees, minutes, seconds float64
+	var err error
+	switch len(parts) {
+	case 6:
+		degrees, err = strconv.ParseFloat(parts[0]+"."+parts[1], 64)
+		if err != nil {
+			return 0.0, fmt.Errorf(unparsableErrorFmt, s)
+		}
+		minutes, err = strconv.ParseFloat(parts[2]+"."+parts[3], 64)
+		if err != nil {
+			return 0.0, fmt.Errorf(unparsableErrorFmt, s)
+		}
+		minutes = math.Copysign(minutes, degrees)
+		seconds, err = strconv.ParseFloat(parts[4]+"."+parts[5], 64)
+		if err != nil {
+			return 0.0, fmt.Errorf(unparsableErrorFmt, s)
+		}
+		seconds = math.Copysign(seconds, degrees)
+	case 3:
+		degrees, err = strconv.ParseFloat(parts[0], 64)
+		if err != nil {
+			return 0.0, fmt.Errorf(unparsableErrorFmt, s)
+		}
+		minutes, err = strconv.ParseFloat(parts[1], 64)
+		if err != nil {
+			return 0.0, fmt.Errorf(unparsableErrorFmt, s)
+		}
+		minutes = math.Copysign(minutes, degrees)
+		seconds, err = strconv.ParseFloat(parts[2], 64)
+		if err != nil {
+			return 0.0, fmt.Errorf(unparsableErrorFmt, s)
+		}
+		seconds = math.Copysign(seconds, degrees)
+	default:
+		return 0.0, fmt.Errorf(unparsableErrorFmt, s)
+	}
+	return degrees + minutes/60.0 + seconds/3600.0, nil
+}
+
+func parse3Rat2(tag *tiff.Tag) ([3]float64, error) {
+	v := [3]float64{}
+	for i := range v {
+		num, den, err := tag.Rat2(i)
+		if err != nil {
+			return v, err
+		}
+		v[i] = ratFloat(num, den)
+		if tag.Count < uint32(i+2) {
+			break
+		}
+	}
+	return v, nil
+}
+
+func tagDegrees(tag *tiff.Tag) (float64, error) {
+	switch tag.Format() {
+	case tiff.RatVal:
+		// The usual case, according to the Exif spec
+		// (http://www.kodak.com/global/plugins/acrobat/en/service/digCam/exifStandard2.pdf,
+		// sec 4.6.6, p. 52 et seq.)
+		v, err := parse3Rat2(tag)
+		if err != nil {
+			return 0.0, err
+		}
+		return v[0] + v[1]/60 + v[2]/3600.0, nil
+	case tiff.StringVal:
+		// Encountered this weird case with a panorama picture taken with a HTC phone
+		s, err := tag.StringVal()
+		if err != nil {
+			return 0.0, err
+		}
+		return parseTagDegreesString(s)
+	default:
+		// don't know how to parse value, give up
+		return 0.0, fmt.Errorf("Malformed EXIF Tag Degrees")
+	}
+}
+
+// LatLong returns the latitude and longitude of the photo and
+// whether it was present.
+func (x *Exif) LatLong() (lat, long float64, err error) {
+	// All calls of x.Get might return an TagNotPresentError
+	longTag, err := x.Get(FieldName("GPSLongitude"))
+	if err != nil {
+		return
+	}
+	ewTag, err := x.Get(FieldName("GPSLongitudeRef"))
+	if err != nil {
+		return
+	}
+	latTag, err := x.Get(FieldName("GPSLatitude"))
+	if err != nil {
+		return
+	}
+	nsTag, err := x.Get(FieldName("GPSLatitudeRef"))
+	if err != nil {
+		return
+	}
+	if long, err = tagDegrees(longTag); err != nil {
+		return 0, 0, fmt.Errorf("Cannot parse longitude: %v", err)
+	}
+	if lat, err = tagDegrees(latTag); err != nil {
+		return 0, 0, fmt.Errorf("Cannot parse latitude: %v", err)
+	}
+	ew, err := ewTag.StringVal()
+	if err == nil && ew == "W" {
+		long *= -1.0
+	} else if err != nil {
+		return 0, 0, fmt.Errorf("Cannot parse longitude: %v", err)
+	}
+	ns, err := nsTag.StringVal()
+	if err == nil && ns == "S" {
+		lat *= -1.0
+	} else if err != nil {
+		return 0, 0, fmt.Errorf("Cannot parse longitude: %v", err)
+	}
+	return lat, long, nil
 }
 
 // String returns a pretty text representation of the decoded exif data.
