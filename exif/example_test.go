@@ -27,6 +27,6 @@ func ExampleDecode() {
 	fmt.Println(date.StringVal())
 
 	focal, _ := x.Get(exif.FocalLength)
-	numer, denom := focal.Rat2(0) // retrieve first (only) rat. value
+	numer, denom, _ := focal.Rat2(0) // retrieve first (only) rat. value
 	fmt.Printf("%v/%v", numer, denom)
 }
