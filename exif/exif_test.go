@@ -1,9 +1,11 @@
 package exif
 
+//go:generate go run regen_regress.go -- regress_expected_test.go
+//go:generate go fmt regress_expected_test.go
+
 import (
 	"flag"
 	"fmt"
-	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -13,76 +15,7 @@ import (
 	"github.com/rwcarlsen/goexif/tiff"
 )
 
-// switch to true to regenerate regression expected values
-var regenRegress = false
-
 var dataDir = flag.String("test_data_dir", ".", "Directory where the data files for testing are located")
-
-// TestRegenRegress regenerates the expected image exif fields/values for
-// sample images.
-func TestRegenRegress(t *testing.T) {
-	if !regenRegress {
-		return
-	}
-
-	dst, err := os.Create("regress_expected_test.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dst.Close()
-
-	dir, err := os.Open("samples")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dir.Close()
-
-	names, err := dir.Readdirnames(0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for i, name := range names {
-		names[i] = filepath.Join("samples", name)
-	}
-	makeExpected(names, dst)
-}
-
-func makeExpected(files []string, w io.Writer) {
-	fmt.Fprintf(w, "package exif\n\n")
-	fmt.Fprintf(w, "var regressExpected = map[string]map[FieldName]string{\n")
-
-	for _, name := range files {
-		f, err := os.Open(name)
-		if err != nil {
-			continue
-		}
-
-		x, err := Decode(f)
-		if err != nil {
-			f.Close()
-			continue
-		}
-
-		fmt.Fprintf(w, "\t\"%v\": map[FieldName]string{\n", filepath.Base(name))
-		x.Walk(&regresswalk{w})
-		fmt.Fprintf(w, "\t},\n")
-		f.Close()
-	}
-	fmt.Fprintf(w, "}\n")
-}
-
-type regresswalk struct {
-	wr io.Writer
-}
-
-func (w *regresswalk) Walk(name FieldName, tag *tiff.Tag) error {
-	if strings.HasPrefix(string(name), UnknownPrefix) {
-		fmt.Fprintf(w.wr, "\t\t\"%v\": `%v`,\n", name, tag.String())
-	} else {
-		fmt.Fprintf(w.wr, "\t\t%v: `%v`,\n", name, tag.String())
-	}
-	return nil
-}
 
 func TestDecode(t *testing.T) {
 	fpath := filepath.Join(*dataDir, "samples")
