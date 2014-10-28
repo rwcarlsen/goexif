@@ -137,6 +137,10 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 	}
 
 	valLen := typeSize[t.Type] * t.Count
+	if valLen == 0 {
+		return t, errors.New("zero length tag value")
+	}
+
 	if valLen > 4 {
 		binary.Read(r, order, &t.ValOffset)
 
