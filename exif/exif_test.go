@@ -182,3 +182,21 @@ func TestHugeTagError(t *testing.T) {
 		t.Fatal("wrong error:", err.Error())
 	}
 }
+
+// Check for a 0-length tag value
+func TestZeroLengthTagError(t *testing.T) {
+	name := filepath.Join(*dataDir, "corrupt/infinite_loop_exif.jpg")
+	f, err := os.Open(name)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	defer f.Close()
+
+	_, err = Decode(f)
+	if err == nil {
+		t.Fatal("no error on bad exif data")
+	}
+	if !strings.Contains(err.Error(), "zero length tag value") {
+		t.Fatal("wrong error:", err.Error())
+	}
+}
