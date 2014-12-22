@@ -146,3 +146,57 @@ func TestParseTagDegreesString(t *testing.T) {
 		t.Error("parseTagDegreesString: false positive for " + s)
 	}
 }
+
+// Make sure we error out early when a tag had a count of MaxUint32
+func TestMaxUint32CountError(t *testing.T) {
+	name := filepath.Join(*dataDir, "corrupt/max_uint32_exif.jpg")
+	f, err := os.Open(name)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	defer f.Close()
+
+	_, err = Decode(f)
+	if err == nil {
+		t.Fatal("no error on bad exif data")
+	}
+	if !strings.Contains(err.Error(), "invalid Count offset") {
+		t.Fatal("wrong error:", err.Error())
+	}
+}
+
+// Make sure we error out early with tag data sizes larger than the image file
+func TestHugeTagError(t *testing.T) {
+	name := filepath.Join(*dataDir, "corrupt/huge_tag_exif.jpg")
+	f, err := os.Open(name)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	defer f.Close()
+
+	_, err = Decode(f)
+	if err == nil {
+		t.Fatal("no error on bad exif data")
+	}
+	if !strings.Contains(err.Error(), "short read") {
+		t.Fatal("wrong error:", err.Error())
+	}
+}
+
+// Check for a 0-length tag value
+func TestZeroLengthTagError(t *testing.T) {
+	name := filepath.Join(*dataDir, "corrupt/infinite_loop_exif.jpg")
+	f, err := os.Open(name)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	defer f.Close()
+
+	_, err = Decode(f)
+	if err == nil {
+		t.Fatal("no error on bad exif data")
+	}
+	if !strings.Contains(err.Error(), "zero length tag value") {
+		t.Fatal("wrong error:", err.Error())
+	}
+}
