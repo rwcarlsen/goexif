@@ -27,6 +27,36 @@ const (
 	interopPointer = 0xA005
 )
 
+var flashDescriptions = map[int]string{
+	0x0:  "No Flash",
+	0x1:  "Fired",
+	0x5:  "Fired, Return not detected",
+	0x7:  "Fired, Return detected",
+	0x8:  "On, Did not fire",
+	0x9:  "On, Fired",
+	0xD:  "On, Return not detected",
+	0xF:  "On, Return detected",
+	0x10: "Off, Did not fire",
+	0x14: "Off, Did not fire, Return not detected",
+	0x18: "Auto, Did not fire",
+	0x19: "Auto, Fired",
+	0x1D: "Auto, Fired, Return not detected",
+	0x1F: "Auto, Fired, Return detected",
+	0x20: "No flash function",
+	0x30: "Off, No flash function",
+	0x41: "Fired, Red-eye reduction",
+	0x45: "Fired, Red-eye reduction, Return not detected",
+	0x47: "Fired, Red-eye reduction, Return detected",
+	0x49: "On, Red-eye reduction",
+	0x4D: "On, Red-eye reduction, Return not detected",
+	0x4F: "On, Red-eye reduction, Return detected",
+	0x50: "Off, Red-eye reduction",
+	0x58: "Auto, Did not fire, Red-eye reduction",
+	0x59: "Auto, Fired, Red-eye reduction",
+	0x5D: "Auto, Fired, Red-eye reduction, Return not detected",
+	0x5F: "Auto, Fired, Red-eye reduction, Return detected",
+}
+
 // A TagNotPresentError is returned when the requested field is not
 // present in the EXIF.
 type TagNotPresentError FieldName
@@ -595,4 +625,18 @@ func (app *appSec) exifReader() (*bytes.Reader, error) {
 		return nil, errors.New("exif: failed to find exif intro marker")
 	}
 	return bytes.NewReader(app.data[6:]), nil
+}
+
+// Flash returns the descriptive text that corresponds to the flash value of the
+// photo if it is present.
+func (x *Exif) Flash() (string, error) {
+	flashTag, err := x.Get(FieldName("Flash"))
+	if err != nil {
+		return "", err
+	}
+	flashVal, err := flashTag.Int(0)
+	if err != nil {
+		return "", err
+	}
+	return flashDescriptions[flashVal], nil
 }
