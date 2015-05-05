@@ -27,6 +27,24 @@ const (
 	interopPointer = 0xA005
 )
 
+// A decodeError is returned when the image cannot be decoded as a tiff image.
+type decodeError struct {
+	cause error
+}
+
+func (de decodeError) Error() string {
+	return fmt.Sprintf("exif: decode failed (%v) ", de.cause.Error())
+}
+
+// IsShortReadTagValueError identifies a ErrShortReadTagValue error.
+func IsShortReadTagValueError(err error) bool {
+	de, ok := err.(decodeError)
+	if ok {
+		return de.cause == tiff.ErrShortReadTagValue
+	}
+	return false
+}
+
 // A TagNotPresentError is returned when the requested field is not
 // present in the EXIF.
 type TagNotPresentError FieldName
@@ -249,13 +267,13 @@ func Decode(r io.Reader) (*Exif, error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("exif: decode failed (%v) ", err)
+		return nil, decodeError{cause: err}
 	}
 
 	er.Seek(0, 0)
 	raw, err := ioutil.ReadAll(er)
 	if err != nil {
-		return nil, fmt.Errorf("exif: decode failed (%v) ", err)
+		return nil, decodeError{cause: err}
 	}
 
 	// build an exif structure from the tiff
