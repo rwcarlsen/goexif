@@ -555,11 +555,15 @@ func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 			continue
 		}
 
-		dataLenBytes, err := br.Peek(2)
-		if err != nil {
-			return nil, err
+		dataLenBytes := make([]byte, 2)
+		for k,_ := range dataLenBytes {
+			c, err := br.ReadByte()
+			if err != nil {
+				return nil, err
+			}
+			dataLenBytes[k] = c
 		}
-		dataLen = int(binary.BigEndian.Uint16(dataLenBytes))
+		dataLen = int(binary.BigEndian.Uint16(dataLenBytes)) - 2
 	}
 
 	// read section data
@@ -573,7 +577,6 @@ func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 		}
 		app.data = append(app.data, s[:n]...)
 	}
-	app.data = app.data[2:] // exclude dataLenBytes
 	return app, nil
 }
 
