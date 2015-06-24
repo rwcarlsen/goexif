@@ -129,7 +129,9 @@ func DecodeDir(r ReadAtReader, order binary.ByteOrder) (d *Dir, offset int32, er
 	// load tags
 	for n := 0; n < int(nTags); n++ {
 		t, err := DecodeTag(r, order)
-		if err != nil {
+		if err == errUnhandledTagType {
+			continue
+		} else if err != nil {
 			return nil, 0, err
 		}
 		d.Tags = append(d.Tags, t)

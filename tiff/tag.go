@@ -25,7 +25,10 @@ const (
 	OtherVal
 )
 
-var ErrShortReadTagValue = errors.New("tiff: short read of tag value")
+var (
+	ErrShortReadTagValue = errors.New("tiff: short read of tag value")
+	errUnhandledTagType  = errors.New("tiff: unhandled tag type")
+)
 
 var formatNames = map[Format]string{
 	IntVal:    "int",
@@ -138,11 +141,17 @@ func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 		return t, errors.New("invalid Count offset in tag")
 	}
 
-	valLen := typeSize[t.Type] * t.Count
-	if valLen == 0 {
-		return t, errors.New("zero length tag value")
+	// Ignore the value/offset if we don't know about the size of the type.
+	size, ok := typeSize[t.Type]
+	if !ok {
+		var ignore [4]byte
+		if _, err = io.ReadFull(r, ignore[:]); err != nil {
+			return t, errors.New("tiff: unknown tag offset read failed: " + err.Error())
+		}
+		return nil, errUnhandledTagType
 	}
 
+	valLen := size * t.Count
 	if valLen > 4 {
 		binary.Read(r, order, &t.ValOffset)
 

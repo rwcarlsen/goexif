@@ -183,7 +183,7 @@ func TestHugeTagError(t *testing.T) {
 	}
 }
 
-// Check for a 0-length tag value
+// Even though the image contains a 0-length tag value, we continue and get some data
 func TestZeroLengthTagError(t *testing.T) {
 	name := filepath.Join(*dataDir, "corrupt/infinite_loop_exif.jpg")
 	f, err := os.Open(name)
@@ -196,7 +196,7 @@ func TestZeroLengthTagError(t *testing.T) {
 	if err == nil {
 		t.Fatal("no error on bad exif data")
 	}
-	if !strings.Contains(err.Error(), "zero length tag value") {
+	if !strings.Contains(err.Error(), "short read") {
 		t.Fatal("wrong error:", err.Error())
 	}
 }
