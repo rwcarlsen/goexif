@@ -326,6 +326,9 @@ func (t *Tag) Rat(i int) (*big.Rat, error) {
 	if err != nil {
 		return nil, err
 	}
+	if d == 0 {
+		return nil, errors.New("rational has zero-valued denominator")
+	}
 	return big.NewRat(n, d), nil
 }
 
