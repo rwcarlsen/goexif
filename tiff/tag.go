@@ -319,12 +319,15 @@ func (t *Tag) typeErr(to Format) error {
 }
 
 // Rat returns the tag's i'th value as a rational number. It returns a nil and
-// an error if this tag's Format is not RatVal.  It panics for zero deminators
-// or if i is out of range.
+// an error if this tag's Format is not RatVal or has a zero denominator.  It 
+// panics i is out of range.
 func (t *Tag) Rat(i int) (*big.Rat, error) {
 	n, d, err := t.Rat2(i)
 	if err != nil {
 		return nil, err
+	}
+	if d == 0 {
+		return nil, errors.New("rational has zero-valued denominator")
 	}
 	return big.NewRat(n, d), nil
 }
