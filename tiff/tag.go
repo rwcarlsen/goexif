@@ -101,6 +101,9 @@ type Tag struct {
 	// field.
 	ValOffset uint32
 
+	// Address hold byte offset of this tag header from the begining of the file.
+	Address uint64
+
 	order     binary.ByteOrder
 	intVals   []int64
 	floatVals []float64
@@ -116,6 +119,7 @@ type Tag struct {
 func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 	t := new(Tag)
 	t.order = order
+	t.Address = uint64(t.Size()) - uint64(t.Len())
 
 	err := binary.Read(r, order, &t.Id)
 	if err != nil {
