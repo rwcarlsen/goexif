@@ -119,7 +119,7 @@ type Tag struct {
 func DecodeTag(r ReadAtReader, order binary.ByteOrder) (*Tag, error) {
 	t := new(Tag)
 	t.order = order
-	t.Address = uint64(t.Size()) - uint64(t.Len())
+	t.Address = uint64(r.Size()) - uint64(r.Len())
 
 	err := binary.Read(r, order, &t.Id)
 	if err != nil {
