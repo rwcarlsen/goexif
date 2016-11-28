@@ -129,6 +129,7 @@ const (
 	Canon_CameraSettings exif.FieldName = "Canon.CameraSettings" // A sub-IFD
 	Canon_ShotInfo       exif.FieldName = "Canon.ShotInfo"       // A sub-IFD
 	Canon_AFInfo         exif.FieldName = "Canon.AFInfo"
+	Canon_TimeInfo       exif.FieldName = "Canon.TimeInfo"
 	Canon_0x0000         exif.FieldName = "Canon.0x0000"
 	Canon_0x0003         exif.FieldName = "Canon.0x0003"
 	Canon_0x00b5         exif.FieldName = "Canon.0x00b5"
@@ -156,6 +157,7 @@ var makerNoteCanonFields = map[uint16]exif.FieldName{
 	0x0015: SerialNumberFormat,
 	0x001a: SuperMacro,
 	0x0026: Canon_AFInfo,
+	0x0035: Canon_TimeInfo,
 	0x0083: OriginalDecisionDataOffset,
 	0x00a4: WhiteBalanceTable,
 	0x0095: LensModel,
