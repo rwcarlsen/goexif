@@ -3,6 +3,7 @@ package tiff
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -180,7 +181,11 @@ func (t *Tag) convertVals() error {
 	switch t.Type {
 	case DTAscii:
 		if len(t.Val) > 0 {
-			t.strVal = string(t.Val[:len(t.Val)-1]) // ignore the last byte (NULL).
+			if index := bytes.IndexByte(t.Val, '\x00'); index != -1 {
+				t.strVal = string(t.Val[:index])
+			} else {
+				t.strVal = string(t.Val)
+			}
 		}
 	case DTByte:
 		var v uint8
@@ -390,7 +395,13 @@ func (t *Tag) String() string {
 
 func (t *Tag) MarshalJSON() ([]byte, error) {
 	switch t.format {
-	case StringVal, UndefVal:
+	case StringVal:
+		if s, err := t.StringVal(); err != nil {
+			return []byte(`null`), err
+		} else {
+			return json.Marshal(s)
+		}
+	case UndefVal:
 		return nullString(t.Val), nil
 	case OtherVal:
 		return []byte(fmt.Sprintf("unknown tag type '%v'", t.Type)), nil
