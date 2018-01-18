@@ -55,16 +55,35 @@ func (_ *nikonV3) Parse(x *exif.Exif) error {
 	m, err := x.Get(exif.MakerNote)
 	if err != nil {
 		return nil
-	} else if bytes.Compare(m.Val[:6], []byte("Nikon\000")) != 0 {
-		return nil
 	}
+	if bytes.Compare(m.Val[:8], []byte("Nikon\000\001\000")) == 0 {
+		// Nikon maker note type 1 is an IFD.
+		// Reader offsets need to be w.r.t. the original tiff structure.
+		buf := bytes.NewReader(append(make([]byte, m.ValOffset), m.Val...))
+		buf.Seek(int64(m.ValOffset+8), 0)
 
-	// Nikon v3 maker note is a self-contained IFD (offsets are relative
-	// to the start of the maker note)
-	mkNotes, err := tiff.Decode(bytes.NewReader(m.Val[10:]))
-	if err != nil {
-		return err
+		mkNotesDir, _, err := tiff.DecodeDir(buf, x.Tiff.Order)
+		if err != nil {
+			return err
+		}
+		x.LoadTags(mkNotesDir, makerNoteNikon1Fields, false)
+	} else if bytes.Compare(m.Val[:7], []byte("Nikon\000\002")) == 0 {
+		// Nikon maker note type 3 has a full TIFF header. Type 2 does not.
+		if bytes.Compare(m.Val[10:14], []byte("MM\000*")) == 0 ||
+			bytes.Compare(m.Val[10:14], []byte("II*\000")) == 0 {
+			// Nikon v3 maker note is a complete TIFF container (offsets are
+			// relative to the start of the maker note's TIFF container).
+			mkNotes, err := tiff.Decode(bytes.NewReader(m.Val[10:]))
+			if err != nil {
+				return err
+			}
+			x.LoadTags(mkNotes.Dirs[0], makerNoteNikon3Fields, false)
+		} else {
+			// Nikon v2 maker note is reported to start with "Nikon\000\002",
+			// but have no TIFF header. Others report that it lacks even the
+			// "Nikon..." header. Currently unimplemented until an example is
+			// available.
+		}
 	}
-	x.LoadTags(mkNotes.Dirs[0], makerNoteNikon3Fields, false)
 	return nil
 }

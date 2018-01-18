@@ -37,7 +37,6 @@ const (
 	ImageAuthentication                       = "ImageAuthentication"
 	ActiveDLighting                           = "ActiveDLighting"
 	VignetteControl                           = "VignetteControl"
-	ImageAdjustment                           = "ImageAdjustment"
 	ToneComp                                  = "ToneComp"
 	AuxiliaryLens                             = "AuxiliaryLens"
 	LensType                                  = "LensType"
@@ -101,31 +100,37 @@ const (
 	ColorData                                 = "ColorData"
 
 	// Nikon-specific fields
-	Nikon_Version        = "Nikon.Version"
-	Nikon_WhiteBalance   = "Nikon.WhiteBalance"
-	Nikon_ColorSpace     = "Nikon.ColorSpace"
-	Nikon_LightSource    = "Nikon.LightSource"
-	Nikon_Saturation     = "Nikon_Saturation"
-	Nikon_ShotInfo       = "Nikon.ShotInfo"       // A sub-IFD
-	Nikon_VRInfo         = "Nikon.VRInfo"         // A sub-IFD
-	Nikon_PictureControl = "Nikon.PictureControl" // A sub-IFD
-	Nikon_WorldTime      = "Nikon.WorldTime"      // A sub-IFD
-	Nikon_ISOInfo        = "Nikon.ISOInfo"        // A sub-IFD
-	Nikon_AFInfo         = "Nikon.AFInfo"         // A sub-IFD
-	Nikon_ColorBalance   = "Nikon.ColorBalance"   // A sub-IFD
-	Nikon_LensData       = "Nikon.LensData"       // A sub-IFD
-	Nikon_SerialNO       = "Nikon.SerialNO"       // usually starts with "NO="
-	Nikon_FlashInfo      = "Nikon.FlashInfo"      // A sub-IFD
-	Nikon_MultiExposure  = "Nikon.MultiExposure"  // A sub-IFD
-	Nikon_AFInfo2        = "Nikon.AFInfo2"        // A sub-IFD
-	Nikon_FileInfo       = "Nikon.FileInfo"       // A sub-IFD
-	Nikon_AFTune         = "Nikon.AFTune"         // A sub-IFD
-	Nikon3_0x000a        = "Nikon3.0x000a"
-	Nikon3_0x009b        = "Nikon3.0x009b"
-	Nikon3_0x009f        = "Nikon3.0x009f"
-	Nikon3_0x00a3        = "Nikon3.0x00a3"
+	Nikon_FamilyId        = "Nikon.FamilyId"
+	Nikon_ImageAdjustment = "Nikon.ImageAdjustment" // Int or String
+	Nikon_WhiteBalance    = "Nikon.WhiteBalance"    // Int or String
+	Nikon_Focus           = "Nikon.Focus"           // Rational
+	Nikon_AuxiliaryLens   = "Nikon.AuxiliaryLens"   // Int or String
+	Nikon_Version         = "Nikon.Version"
+	Nikon_ColorSpace      = "Nikon.ColorSpace"
+	Nikon_LightSource     = "Nikon.LightSource"
+	Nikon_Saturation      = "Nikon_Saturation"
+	Nikon_ShotInfo        = "Nikon.ShotInfo"       // A sub-IFD
+	Nikon_VRInfo          = "Nikon.VRInfo"         // A sub-IFD
+	Nikon_PictureControl  = "Nikon.PictureControl" // A sub-IFD
+	Nikon_WorldTime       = "Nikon.WorldTime"      // A sub-IFD
+	Nikon_ISOInfo         = "Nikon.ISOInfo"        // A sub-IFD
+	Nikon_AFInfo          = "Nikon.AFInfo"         // A sub-IFD
+	Nikon_ColorBalance    = "Nikon.ColorBalance"   // A sub-IFD
+	Nikon_LensData        = "Nikon.LensData"       // A sub-IFD
+	Nikon_SerialNO        = "Nikon.SerialNO"       // usually starts "NO="
+	Nikon_FlashInfo       = "Nikon.FlashInfo"      // A sub-IFD
+	Nikon_MultiExposure   = "Nikon.MultiExposure"  // A sub-IFD
+	Nikon_AFInfo2         = "Nikon.AFInfo2"        // A sub-IFD
+	Nikon_FileInfo        = "Nikon.FileInfo"       // A sub-IFD
+	Nikon_AFTune          = "Nikon.AFTune"         // A sub-IFD
+	Nikon1_0x0009         = "Nikon1.0x0009"
+	Nikon1_0x0f00         = "Nikon1.0x0f00"
+	Nikon3_0x000a         = "Nikon3.0x000a"
+	Nikon3_0x009b         = "Nikon3.0x009b"
+	Nikon3_0x009f         = "Nikon3.0x009f"
+	Nikon3_0x00a3         = "Nikon3.0x00a3"
 
-	// Canon-specific fiends
+	// Canon-specific fields
 	Canon_CameraSettings = "Canon.CameraSettings" // A sub-IFD
 	Canon_ShotInfo       = "Canon.ShotInfo"       // A sub-IFD
 	Canon_AFInfo         = "Canon.AFInfo"
@@ -173,6 +178,22 @@ var makerNoteCanonFields = map[uint16]exif.FieldName{
 	0x4001: ColorData,
 }
 
+// Nikon version 1 Maker Notes fields (used by E700, E800, E900, E900S, E910,
+// and E950)
+var makerNoteNikon1Fields = map[uint16]exif.FieldName{
+	0x0002: Nikon_FamilyId,
+	0x0003: Quality,
+	0x0004: ColorMode,
+	0x0005: Nikon_ImageAdjustment,
+	0x0006: ISOSpeed,
+	0x0007: Nikon_WhiteBalance,
+	0x0008: Nikon_Focus,
+	0x0009: Nikon1_0x0009,
+	0x000a: DigitalZoom,
+	0x000b: Nikon_AuxiliaryLens,
+	0x0f00: Nikon1_0x0f00,
+}
+
 // Nikon version 3 Maker Notes fields (used by E5400, SQ, D2H, D70, and newer)
 var makerNoteNikon3Fields = map[uint16]exif.FieldName{
 	0x0001: Nikon_Version,
@@ -210,7 +231,7 @@ var makerNoteNikon3Fields = map[uint16]exif.FieldName{
 	0x0024: Nikon_WorldTime,
 	0x0025: Nikon_ISOInfo,
 	0x002a: VignetteControl,
-	0x0080: ImageAdjustment,
+	0x0080: Nikon_ImageAdjustment,
 	0x0081: ToneComp,
 	0x0082: AuxiliaryLens,
 	0x0083: LensType,
