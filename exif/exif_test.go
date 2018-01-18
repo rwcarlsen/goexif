@@ -6,6 +6,7 @@ package exif
 import (
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -198,5 +199,31 @@ func TestZeroLengthTagError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "zero length tag value") {
 		t.Fatal("wrong error:", err.Error())
+	}
+}
+
+// stutteredReader makes sure that any call to Read only returns N number of
+// bytes at most.
+type stutteredReader struct {
+	R io.Reader
+	N int64
+}
+
+func (r stutteredReader) Read(b []byte) (int, error) {
+	lr := &io.LimitedReader{r.R, r.N}
+	return lr.Read(b)
+}
+
+func TestShortRead(t *testing.T) {
+	name := filepath.Join(*dataDir, "sample1.jpg")
+	f, err := os.Open(name)
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+	defer f.Close()
+
+	_, err = Decode(stutteredReader{f, 1})
+	if err != nil {
+		t.Fatal(err)
 	}
 }

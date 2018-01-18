@@ -216,7 +216,7 @@ func Decode(r io.Reader) (*Exif, error) {
 	// marker and also the EXIF header.
 
 	header := make([]byte, 4)
-	n, err := r.Read(header)
+	n, err := io.ReadFull(r, header)
 	if err != nil {
 		return nil, err
 	}
@@ -574,7 +574,7 @@ func newAppSec(marker byte, r io.Reader) (*appSec, error) {
 		}
 
 		dataLenBytes := make([]byte, 2)
-		for k,_ := range dataLenBytes {
+		for k, _ := range dataLenBytes {
 			c, err := br.ReadByte()
 			if err != nil {
 				return nil, err
