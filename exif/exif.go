@@ -368,8 +368,27 @@ func (x *Exif) DateTime() (time.Time, error) {
 	exifTimeLayout := "2006:01:02 15:04:05"
 	dateStr := strings.TrimRight(string(tag.Val), "\x00")
 	// TODO(bradfitz,mpl): look for timezone offset, GPS time, etc.
-	// For now, just always return the time.Local timezone.
-	return time.ParseInLocation(exifTimeLayout, dateStr, time.Local)
+	timeZone := time.Local
+	if tz, _ := x.TimeZone(); tz != nil {
+		timeZone = tz
+	}
+	return time.ParseInLocation(exifTimeLayout, dateStr, timeZone)
+}
+
+func (x *Exif) TimeZone() (*time.Location, error) {
+	// TODO: parse more timezone fields (e.g. Nikon WorldTime).
+	timeInfo, err := x.Get("Canon.TimeInfo")
+	if err != nil {
+		return nil, err
+	}
+	if timeInfo.Count < 2 {
+		return nil, errors.New("Canon.TimeInfo does not contain timezone")
+	}
+	offsetMinutes, err := timeInfo.Int(1)
+	if err != nil {
+		return nil, err
+	}
+	return time.FixedZone("", offsetMinutes*60), nil
 }
 
 func ratFloat(num, dem int64) float64 {
