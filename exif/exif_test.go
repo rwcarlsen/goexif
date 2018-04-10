@@ -4,8 +4,10 @@ package exif
 //go:generate go fmt regress_expected_test.go
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -55,6 +57,41 @@ func TestDecode(t *testing.T) {
 	if cnt != len(regressExpected) {
 		t.Errorf("Did not process enough samples, got %d, want %d", cnt, len(regressExpected))
 	}
+}
+
+func TestDecodeRawEXIF(t *testing.T) {
+	rawFile := filepath.Join(*dataDir, "samples", "raw.exif")
+	raw, err := ioutil.ReadFile(rawFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	x, err := Decode(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	got := map[string]string{}
+	err = x.Walk(walkFunc(func(name FieldName, tag *tiff.Tag) error {
+		got[fmt.Sprint(name)] = fmt.Sprint(tag)
+		return nil
+	}))
+	if err != nil {
+		t.Fatalf("Walk: %v", err)
+	}
+	// The main part of this test is that Decode can parse an
+	// "Exif\x00\x00" body, but also briefly sanity check the
+	// parsed results:
+	if len(got) < 42 {
+		t.Errorf("Got %d tags. Want at least 42. Got: %v", len(got), err)
+	}
+	if g, w := got["DateTime"], `"2018:04:03 07:54:33"`; g != w {
+		t.Errorf("DateTime value = %q; want %q", g, w)
+	}
+}
+
+type walkFunc func(FieldName, *tiff.Tag) error
+
+func (f walkFunc) Walk(name FieldName, tag *tiff.Tag) error {
+	return f(name, tag)
 }
 
 type walker struct {
