@@ -49,6 +49,13 @@ var set1 = []tagTest{
 		input{"0100", "0200", "06000000", "12000000", "111213141516"},
 		output{0x0001, DataType(0x0002), 0x0006, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16}},
 	},
+	// broken Count, because it includes all trailing NULL bytes, as is the case in
+	// https://user-images.githubusercontent.com/2621/39392188-71a66fc4-4a66-11e8-9e3b-694163efa643.jpg
+	tagTest{
+		input{"0001", "0002", "00000009", "00000012", "111213141516000000"},
+		input{"0100", "0200", "09000000", "12000000", "111213141516000000"},
+		output{0x0001, DataType(0x0002), 0x0009, []byte{0x11, 0x12, 0x13, 0x14, 0x15, 0x16}},
+	},
 	//////////// int (1-byte) type ////////////////
 	tagTest{
 		input{"0001", "0001", "00000001", "11000000", ""},
@@ -161,8 +168,15 @@ func testSingle(t *testing.T, order binary.ByteOrder, in input, out output, i in
 	if tg.Count != out.count {
 		t.Errorf("(%v) tag %v component count decode: expected %v, got %v", order, i, out.count, tg.Count)
 	}
-	if !bytes.Equal(tg.Val, out.val) {
-		t.Errorf("(%v) tag %v value decode: expected %v, got %v", order, i, out.val, tg.Val)
+	if tg.Type == DTAscii && in.val != "" {
+		strOut := string(out.val)
+		if tg.strVal != strOut {
+			t.Errorf("(%v) tag %v string value decode: expected %q, got %q", order, i, strOut, tg.strVal)
+		}
+	} else {
+		if !bytes.Equal(tg.Val, out.val) {
+			t.Errorf("(%v) tag %v value decode: expected %q, got %q", order, i, out.val, tg.Val)
+		}
 	}
 }
 
