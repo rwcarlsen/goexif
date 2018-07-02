@@ -220,6 +220,52 @@ func TestDecode(t *testing.T) {
 	t.Log(tif)
 }
 
+func TestDecodeLoadsTagValues(t *testing.T) {
+	f, err := os.Open("sample1.tif")
+	if err != nil {
+		t.Fatalf("%v\n", err)
+	}
+
+	tif, err := Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vals := [][]byte{
+		{192, 6},
+		{72, 9},
+		{1, 0},
+		{4, 0},
+		{0, 0},
+		{2, 0},
+		{83, 116, 97, 110, 100, 97, 114, 100, 32, 73, 110, 112, 117, 116, 0},
+		{99, 111, 110, 118, 101, 114, 116, 101, 100, 32, 80, 66, 77, 32, 102, 105, 108, 101, 0},
+		{8, 0, 0, 0},
+		{1, 0},
+		{1, 0},
+		{72, 9, 0, 0},
+		{192, 70, 0, 0},
+		{128, 132, 30, 0, 16, 39, 0, 0},
+		{128, 132, 30, 0, 16, 39, 0, 0},
+		{1, 0},
+		{2, 0},
+	}
+	i := 0
+	for _, d := range tif.Dirs {
+		for _, tag := range d.Tags {
+			if len(tag.Val) != len(vals[i]) {
+				t.Errorf("tag value length mismatch for tag #%d", i)
+			}
+			for j, v := range vals[i] {
+				if tag.Val[j] != v {
+					t.Errorf("tag value mismatch for tag #%d index %d", i, j)
+				}
+			}
+			i++
+		}
+	}
+	t.Log(tif)
+}
+
 func TestDecodeTag_blob(t *testing.T) {
 	buf := bytes.NewReader(data())
 	buf.Seek(10, 1)
