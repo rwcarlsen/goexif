@@ -5,6 +5,9 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"flag"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -292,4 +295,39 @@ func data() []byte {
 		panic("invalid string fixture")
 	}
 	return dat
+}
+
+func BenchmarkDecode(b *testing.B) {
+	link := "http://www.rawsamples.ch/raws/canon/RAW_CANON_EOS_5DS.CR2"
+	destFile := "test.raw"
+	_, err := os.Stat(destFile)
+	if os.IsNotExist(err) {
+		resp, err := http.Get(link)
+		if err != nil {
+			b.Errorf("Failed to download image %s: %s", link, err)
+		} else {
+			defer resp.Body.Close()
+			fd, err := os.Create(destFile)
+			if err != nil {
+				b.Errorf("Failed to download image %s: %s", link, err)
+			} else {
+				io.Copy(fd, resp.Body)
+			}
+		}
+		fmt.Println("downloaded", link, "to", destFile)
+	} else {
+		fmt.Println("Skip downloading existing raw file", link)
+	}
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		fd, err := os.Open(destFile)
+		if err != nil {
+			b.Errorf("Failed to open test file %s", err.Error())
+		}
+		_, err = Decode(fd)
+		if err != nil {
+			b.Errorf("Failed to decode test file %s", err.Error())
+		}
+	}
 }
