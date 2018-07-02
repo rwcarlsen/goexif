@@ -234,7 +234,7 @@ func TestHugeTagError(t *testing.T) {
 	if err == nil {
 		t.Fatal("no error on bad exif data")
 	}
-	if !strings.Contains(err.Error(), "short read") {
+	if !strings.Contains(err.Error(), "zero length tag value") {
 		t.Fatal("wrong error:", err.Error())
 	}
 }
@@ -296,7 +296,7 @@ func BenchmarkDecode(b *testing.B) {
 }
 
 func BenchmarkDecodeRaw(b *testing.B) {
-	testFile := "test.raw"
+	testFile := "test.cr2"
 	downloadRAW("http://www.rawsamples.ch/raws/canon/RAW_CANON_EOS_5DS.CR2", testFile)
 	b.ResetTimer()
 
@@ -306,6 +306,42 @@ func BenchmarkDecodeRaw(b *testing.B) {
 			b.Errorf("Failed to open test file %s", err.Error())
 		}
 		_, err = Decode(fd)
+		if err != nil {
+			b.Errorf("Failed to decode test file %s", err.Error())
+		}
+		fd.Close()
+	}
+}
+
+func BenchmarkLazyDecode(b *testing.B) {
+	testFile := "test.jpg"
+	downloadRAW("http://web.canon.jp/imaging/eosd/samples/eos5ds/downloads/02.jpg", testFile)
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		fd, err := os.Open(testFile)
+		if err != nil {
+			b.Errorf("Failed to open test file %s", err.Error())
+		}
+		_, err = LazyDecode(fd)
+		if err != nil {
+			b.Errorf("Failed to decode test file %s", err.Error())
+		}
+		fd.Close()
+	}
+}
+
+func BenchmarkLazyDecodeRaw(b *testing.B) {
+	testFile := "test.cr2"
+	downloadRAW("http://www.rawsamples.ch/raws/canon/RAW_CANON_EOS_5DS.CR2", testFile)
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		fd, err := os.Open(testFile)
+		if err != nil {
+			b.Errorf("Failed to open test file %s", err.Error())
+		}
+		_, err = LazyDecode(fd)
 		if err != nil {
 			b.Errorf("Failed to decode test file %s", err.Error())
 		}

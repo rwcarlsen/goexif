@@ -156,7 +156,7 @@ func TestDecodeTag(t *testing.T) {
 func testSingle(t *testing.T, order binary.ByteOrder, in input, out output, i int) {
 	data := buildInput(in, order)
 	buf := bytes.NewReader(data)
-	tg, err := DecodeTag(buf, order)
+	tg, err := DecodeTag(buf, data, order)
 	if err != nil {
 		t.Errorf("(%v) tag %v%+v decode failed: %v", order, i, in, err)
 		return
@@ -172,11 +172,22 @@ func testSingle(t *testing.T, order binary.ByteOrder, in input, out output, i in
 		t.Errorf("(%v) tag %v component count decode: expected %v, got %v", order, i, out.count, tg.Count)
 	}
 	if tg.Type == DTAscii && in.val != "" {
+		val, err := tg.StringVal()
+		if err != nil {
+			t.Errorf("(%v) tag %v value decoding error: %s", order, i, err.Error())
+		}
 		strOut := string(out.val)
+		if val != strOut {
+			t.Errorf("(%v) tag %v string value decode: expected %q, got %q", order, i, strOut, val)
+		}
 		if tg.strVal != strOut {
-			t.Errorf("(%v) tag %v string value decode: expected %q, got %q", order, i, strOut, tg.strVal)
+			t.Errorf("(%v) tag %v string value cached decode: expected %q, got %q", order, i, strOut, tg.strVal)
 		}
 	} else {
+		err := tg.LoadVal()
+		if err != nil {
+			t.Errorf("(%v) tag %v value decoding error: %s", order, i, err.Error())
+		}
 		if !bytes.Equal(tg.Val, out.val) {
 			t.Errorf("(%v) tag %v value decode: expected %q, got %q", order, i, out.val, tg.Val)
 		}
@@ -270,9 +281,9 @@ func TestDecodeLoadsTagValues(t *testing.T) {
 }
 
 func TestDecodeTag_blob(t *testing.T) {
-	buf := bytes.NewReader(data())
-	buf.Seek(10, 1)
-	tg, err := DecodeTag(buf, binary.LittleEndian)
+	data := data()
+	buf := bytes.NewReader(data)
+	tg, err := DecodeTag(buf, data[10:len(data)], binary.LittleEndian)
 	if err != nil {
 		t.Fatalf("tag decode failed: %v", err)
 	}
@@ -297,31 +308,33 @@ func data() []byte {
 	return dat
 }
 
-func BenchmarkDecode(b *testing.B) {
-	link := "http://www.rawsamples.ch/raws/canon/RAW_CANON_EOS_5DS.CR2"
-	destFile := "test.raw"
+func downloadRAW(link, destFile string) error {
 	_, err := os.Stat(destFile)
 	if os.IsNotExist(err) {
 		resp, err := http.Get(link)
 		if err != nil {
-			b.Errorf("Failed to download image %s: %s", link, err)
+			return fmt.Errorf("Failed to download image %s: %s", link, err)
 		} else {
 			defer resp.Body.Close()
 			fd, err := os.Create(destFile)
 			if err != nil {
-				b.Errorf("Failed to download image %s: %s", link, err)
+				return fmt.Errorf("Failed to download image %s: %s", link, err)
 			} else {
 				io.Copy(fd, resp.Body)
 			}
 		}
-		fmt.Println("downloaded", link, "to", destFile)
-	} else {
-		fmt.Println("Skip downloading existing raw file", link)
+		fmt.Println("Downloaded", link, "to", destFile)
 	}
+	return nil
+}
+
+func BenchmarkDecode(b *testing.B) {
+	testFile := "test.raw"
+	downloadRAW("http://www.rawsamples.ch/raws/canon/RAW_CANON_EOS_5DS.CR2", testFile)
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		fd, err := os.Open(destFile)
+		fd, err := os.Open(testFile)
 		if err != nil {
 			b.Errorf("Failed to open test file %s", err.Error())
 		}
@@ -329,5 +342,24 @@ func BenchmarkDecode(b *testing.B) {
 		if err != nil {
 			b.Errorf("Failed to decode test file %s", err.Error())
 		}
+		fd.Close()
+	}
+}
+
+func BenchmarkLazyDecode(b *testing.B) {
+	testFile := "test.raw"
+	downloadRAW("http://www.rawsamples.ch/raws/canon/RAW_CANON_EOS_5DS.CR2", testFile)
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		fd, err := os.Open(testFile)
+		if err != nil {
+			b.Errorf("Failed to open test file %s", err.Error())
+		}
+		_, err = LazyDecode(fd)
+		if err != nil {
+			b.Errorf("Failed to decode test file %s", err.Error())
+		}
+		fd.Close()
 	}
 }
