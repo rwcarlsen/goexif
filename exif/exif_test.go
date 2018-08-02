@@ -52,6 +52,14 @@ func TestDecode(t *testing.T) {
 			t.Fatalf("No error and yet %v was not decoded", name)
 		}
 
+		t.Run("the raw buffer contains a valid tiff", func(t *testing.T) {
+			b := bytes.NewReader(x.Raw)
+			_, err := tiff.Decode(b)
+			if err != nil {
+				t.Fatalf("The raw buffer does not contain a valid TIFF format: %v", err)
+			}
+		})
+
 		t.Logf("checking pic %v", name)
 		x.Walk(&walker{name, t})
 		cnt++
@@ -71,6 +79,15 @@ func TestDecodeRawEXIF(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
+
+	t.Run("the raw buffer contains a valid tiff", func(t *testing.T) {
+		b := bytes.NewReader(x.Raw)
+		_, err := tiff.Decode(b)
+		if err != nil {
+			t.Fatalf("The raw buffer does not contain a valid TIFF format: %v", err)
+		}
+	})
+
 	got := map[string]string{}
 	err = x.Walk(walkFunc(func(name FieldName, tag *tiff.Tag) error {
 		got[fmt.Sprint(name)] = fmt.Sprint(tag)
