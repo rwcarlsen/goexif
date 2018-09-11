@@ -3,6 +3,7 @@ package mknote
 
 import (
 	"bytes"
+	"encoding/binary"
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/tiff"
@@ -13,8 +14,10 @@ var (
 	Canon = &canon{}
 	// NikonV3 is an exif.Parser for nikon makernote data.
 	NikonV3 = &nikonV3{}
+	// Apple is an exif.Parser for Apple makernote data
+	Apple = &apple{}
 	// All is a list of all available makernote parsers
-	All = []exif.Parser{Canon, NikonV3}
+	All = []exif.Parser{Canon, NikonV3, Apple}
 )
 
 type canon struct{}
@@ -66,5 +69,31 @@ func (_ *nikonV3) Parse(x *exif.Exif) error {
 		return err
 	}
 	x.LoadTags(mkNotes.Dirs[0], makerNoteNikon3Fields, false)
+	return nil
+}
+
+type apple struct{}
+
+// Parse decodes Apple makernote data found in x and adds it to x
+func (_ *apple) Parse(x *exif.Exif) error {
+	m, err := x.Get(exif.MakerNote)
+	if err != nil {
+		return nil
+	} else if bytes.Compare(m.Val[:10], []byte("Apple iOS\000")) != 0 {
+		return nil
+	}
+
+	// Apple makenotes is a self contained IFD and offsets are relative
+	// to the start of the of the maker note.  Apple does not write a special
+	// tiff marker to the metadata
+	buf := bytes.NewReader(m.Val)
+	buf.Seek(14, 0) // skip header, endian marker
+
+	appleDir, _, err := tiff.DecodeDir(buf, binary.BigEndian)
+	if err != nil {
+		return err
+	}
+
+	x.LoadTags(appleDir, makerNoteAppleFields, false)
 	return nil
 }
