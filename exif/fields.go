@@ -89,6 +89,7 @@ const (
 	SubjectDistanceRange       FieldName = "SubjectDistanceRange"
 	LensMake                   FieldName = "LensMake"
 	LensModel                  FieldName = "LensModel"
+	XPComment                  FieldName = "XPComment"
 )
 
 // thumbnail fields
@@ -165,6 +166,7 @@ var exifFields = map[uint16]FieldName{
 	0x0131: Software,
 	0x013B: Artist,
 	0x8298: Copyright,
+	0x9c9c: XPComment,
 
 	// private tags
 	exifPointer: ExifIFDPointer,
