@@ -46,6 +46,10 @@ func makeExpected(files []string, w io.Writer) {
 	fmt.Fprintf(w, "var regressExpected = map[string]map[FieldName]string{\n")
 
 	for _, name := range files {
+		if !strings.HasSuffix(name, ".jpg") {
+			continue
+		}
+
 		f, err := os.Open(name)
 		if err != nil {
 			continue
