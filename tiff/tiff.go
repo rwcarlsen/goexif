@@ -55,7 +55,7 @@ func Decode(r io.Reader) (*Tiff, error) {
 // first byte of an os.File object.
 //
 // It differs from Decode as it is restricted to parsing the tiff structure
-// and only decodes the values on demand
+// and only decodes the values on demand.
 func LazyDecode(r io.ReaderAt) (*Tiff, error) {
 
 	t := new(Tiff)

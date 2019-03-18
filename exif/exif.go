@@ -245,7 +245,8 @@ func Decode(r io.Reader) (*Exif, error) {
 // The error can be inspected with functions such as IsCriticalError
 // to determine whether the returned object might still be usable.
 //
-// It differs from Decode as it is restricted to reading known exif fields
+// It differs from Decode as it only reads known exif fields and does not attempt to read the
+// entire contents of the exif tiff subdirectory; the Exif.Raw field will be nil.
 func LazyDecode(r io.ReaderAt) (*Exif, error) {
 
 	// EXIF data in JPEG is stored in the APP1 marker. EXIF data uses the TIFF

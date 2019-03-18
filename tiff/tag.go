@@ -94,7 +94,7 @@ type Tag struct {
 	// Count is the number of type Type stored in the tag's value (i.e. the
 	// tag's value is an array of type Type and length Count).
 	Count uint32
-	// val holds the bytes that represent the tag's value.
+	// Val holds the bytes that represent the tag's value.
 	Val []byte
 	// ValOffset holds byte offset of the tag value w.r.t. the beginning of the
 	// reader it was decoded from. Zero if the tag value fit inside the offset
