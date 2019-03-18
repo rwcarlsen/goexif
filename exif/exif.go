@@ -151,6 +151,9 @@ func (r *offsetReaderAt) ReadAt(p []byte, off int64) (int, error) {
 // in x. If parsing a sub-IFD fails, the error is recorded and
 // parsing continues with the remaining sub-IFDs.
 func (p *parser) Parse(x *Exif) error {
+	if len(x.Tiff.Dirs) == 0 {
+		return errors.New("Invalid exif data")
+	}
 	x.LoadTags(x.Tiff.Dirs[0], exifFields, false)
 
 	// thumbnails
