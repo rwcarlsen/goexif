@@ -38,9 +38,8 @@ func (_ *canon) Parse(x *exif.Exif) error {
 	// Canon notes are a single IFD directory with no header.
 	// Reader offsets need to be w.r.t. the original tiff structure.
 	buf := bytes.NewReader(append(make([]byte, m.ValOffset), m.Val...))
-	buf.Seek(int64(m.ValOffset), 0)
 
-	mkNotesDir, _, err := tiff.DecodeDir(buf, x.Tiff.Order)
+	mkNotesDir, _, err := tiff.DecodeDir(buf, x.Tiff.Order, m.ValOffset)
 	if err != nil {
 		return err
 	}
