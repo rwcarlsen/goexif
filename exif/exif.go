@@ -531,6 +531,12 @@ func (x *Exif) LatLong() (lat, long float64, err error) {
 	if lat, err = tagDegrees(latTag); err != nil {
 		return 0, 0, fmt.Errorf("Cannot parse latitude: %v", err)
 	}
+	if math.Abs(long) > 180.0 {
+		return 0, 0, fmt.Errorf("Longitude outside allowed range: %v", long)
+	}
+	if math.Abs(lat) > 90.0 {
+		return 0, 0, fmt.Errorf("Latitude outside allowed range: %v", lat)
+	}
 	ew, err := ewTag.StringVal()
 	if err == nil && ew == "W" {
 		long *= -1.0
