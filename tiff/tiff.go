@@ -11,10 +11,17 @@ import (
 	"io/ioutil"
 )
 
+// Countable is used when count offset from the begining of bytes.
+type Countable interface{
+	Len() int
+	Size() int64
+}
+
 // ReadAtReader is used when decoding Tiff tags and directories
 type ReadAtReader interface {
 	io.Reader
 	io.ReaderAt
+	Countable
 }
 
 // Tiff provides access to a decoded tiff data structure.
