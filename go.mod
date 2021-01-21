@@ -1,3 +1,3 @@
-module github.com/rwcarlsen/goexif
+module github.com/ianmill/goexif
 
 go 1.12
