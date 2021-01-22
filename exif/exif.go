@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rwcarlsen/goexif/tiff"
+	"github.com/ianmill/goexif/tiff"
 )
 
 const (
@@ -394,6 +394,14 @@ func (x *Exif) DateTime() (time.Time, error) {
 
 func (x *Exif) TimeZone() (*time.Location, error) {
 	// TODO: parse more timezone fields (e.g. Nikon WorldTime).
+	offsetTime, err := x.Get(OffsetTime)
+	if err == nil {
+		z, err := time.Parse("-07:00", strings.Trim(offsetTime.String(), "\""))
+		if err == nil {
+			return z.Location(), nil
+		}
+	}
+
 	timeInfo, err := x.Get("Canon.TimeInfo")
 	if err != nil {
 		return nil, err

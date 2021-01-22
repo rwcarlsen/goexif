@@ -89,6 +89,9 @@ const (
 	SubjectDistanceRange       FieldName = "SubjectDistanceRange"
 	LensMake                   FieldName = "LensMake"
 	LensModel                  FieldName = "LensModel"
+	OffsetTime                 FieldName = "OffsetTime"
+	OffsetTimeOriginal         FieldName = "OffsetTimeOriginal"
+	OffsetTimeDigitized        FieldName = "OffsetTimeDigitized"
 )
 
 // Windows-specific tags
@@ -174,6 +177,11 @@ var exifFields = map[uint16]FieldName{
 	0x0131: Software,
 	0x013B: Artist,
 	0x8298: Copyright,
+
+	// AddedTags
+	0x9010: OffsetTime,
+	0x9011: OffsetTimeOriginal,
+	0x9012: OffsetTimeDigitized,
 
 	// Windows-specific tags
 	0x9c9b: XPTitle,
