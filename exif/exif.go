@@ -511,19 +511,19 @@ func (x *Exif) LatLong() (lat, long float64, err error) {
 	// All calls of x.Get might return an TagNotPresentError
 	longTag, err := x.Get(FieldName("GPSLongitude"))
 	if err != nil {
-		return
+		return 0, 0, err
 	}
 	ewTag, err := x.Get(FieldName("GPSLongitudeRef"))
 	if err != nil {
-		return
+		return 0, 0, err
 	}
 	latTag, err := x.Get(FieldName("GPSLatitude"))
 	if err != nil {
-		return
+		return 0, 0, err
 	}
 	nsTag, err := x.Get(FieldName("GPSLatitudeRef"))
 	if err != nil {
-		return
+		return 0, 0, err
 	}
 	if long, err = tagDegrees(longTag); err != nil {
 		return 0, 0, fmt.Errorf("Cannot parse longitude: %v", err)
