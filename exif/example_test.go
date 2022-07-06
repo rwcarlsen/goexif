@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/rwcarlsen/goexif/exif"
-	"github.com/rwcarlsen/goexif/mknote"
+	"github.com/HEUBITLYJ/goexif/exif"
+	"github.com/HEUBITLYJ/goexif/mknote"
 )
 
 func ExampleDecode() {

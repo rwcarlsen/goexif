@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rwcarlsen/goexif/tiff"
+	"github.com/HEUBITLYJ/goexif/tiff"
 )
 
 var dataDir = flag.String("test_data_dir", ".", "Directory where the data files for testing are located")
