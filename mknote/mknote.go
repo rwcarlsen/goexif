@@ -55,7 +55,11 @@ func (_ *nikonV3) Parse(x *exif.Exif) error {
 	m, err := x.Get(exif.MakerNote)
 	if err != nil {
 		return nil
-	} else if bytes.Compare(m.Val[:6], []byte("Nikon\000")) != 0 {
+	}
+	if len(m.Val) < 10 {
+		return nil
+	}
+	if bytes.Compare(m.Val[:6], []byte("Nikon\000")) != 0 {
 		return nil
 	}
 
